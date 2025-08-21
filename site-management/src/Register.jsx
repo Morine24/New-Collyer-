@@ -32,19 +32,29 @@ export default function Register() {
 
   return (
     <div className="login-container">
+      <div className="login-hero">
+        <div className="login-logo">
+          <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="60" height="60" rx="12" fill="#FFD600" />
+            <path d="M15 45L30 15L45 45H15Z" fill="#111" />
+          </svg>
+        </div>
+        <h1 className="login-title">Site Management</h1>
+        <p className="login-subtitle">Create your account to get started.</p>
+      </div>
       <form className="login-form" onSubmit={handleSubmit}>
-        <h2>Register</h2>
         <label>
-          Username:
+          Username
           <input
             type="text"
             value={username}
             onChange={e => setUsername(e.target.value)}
             required
+            autoFocus
           />
         </label>
         <label>
-          Password:
+          Password
           <input
             type="password"
             value={password}
@@ -53,7 +63,7 @@ export default function Register() {
           />
         </label>
         <label>
-          Confirm Password:
+          Confirm Password
           <input
             type="password"
             value={confirmPassword}
@@ -62,7 +72,10 @@ export default function Register() {
           />
         </label>
         {error && <div className="error">{error}</div>}
-        <button type="submit">Register</button>
+        <button type="submit" className="login-btn">Register</button>
+        <div className="register-link">
+          <a href="#" onClick={() => window.location.href = '/login'}>Already have an account? Login</a>
+        </div>
       </form>
     </div>
   );

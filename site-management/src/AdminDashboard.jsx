@@ -1,15 +1,5 @@
 import React, { useEffect, useState } from 'react';
-
-// Mock Firebase functions for demo
-const mockDb = {
-  collection: () => ({
-    addDoc: async (data) => ({ id: Date.now().toString(), ...data }),
-    getDocs: async () => ({
-      empty: false,
-      docs: []
-    })
-  })
-};
+import { FaTimes, FaBell, FaBox, FaClipboardList, FaDollarSign, FaDownload, FaHome, FaChartLine, FaBars, FaSearch, FaUsers, FaProjectDiagram, FaSignOutAlt } from 'react-icons/fa';
 
 // Enhanced mock data with costs and projects
 const mockStocks = [
@@ -29,31 +19,42 @@ const mockRequisitions = [
 ];
 
 const mockProjects = [
-  { id: 'proj1', name: 'Building A', budget: 50000, startDate: '2025-08-01', status: 'active' },
-  { id: 'proj2', name: 'Building B', budget: 75000, startDate: '2025-08-05', status: 'active' },
-  { id: 'proj3', name: 'Building C', budget: 30000, startDate: '2025-08-10', status: 'planning' }
+  { id: 'proj1', name: 'Building A', budget: 50000, startDate: '2025-08-01', expectedCompletionDate: '2026-02-01', status: 'active' },
+  { id: 'proj2', name: 'Building B', budget: 75000, startDate: '2025-08-05', expectedCompletionDate: '2026-08-05', status: 'active' },
+  { id: 'proj3', name: 'Building C', budget: 30000, startDate: '2025-08-10', expectedCompletionDate: '2025-12-10', status: 'pending' }
 ];
 
 const mockUsers = [
-  { id: 'user1', name: 'John Doe', email: 'john.doe@example.com', role: 'Admin' },
-  { id: 'user2', name: 'Jane Smith', email: 'jane.smith@example.com', role: 'Manager' },
-  { id: 'user3', name: 'Peter Jones', email: 'peter.jones@example.com', role: 'Staff' },
+  { id: 'user1', name: 'John Doe', email: 'john.doe@example.com', role: 'Manager' },
+  { id: 'user2', name: 'Jane Smith', email: 'jane.smith@example.com', role: 'Stock Clerk' },
+  { id: 'user3', name: 'Peter Jones', email: 'peter.jones@example.com', role: 'Foreman' },
+  { id: 'user4', name: 'Mary Poppins', email: 'mary.poppins@example.com', role: 'Regular Staff' },
 ];
 
-export default function EnhancedAdminDashboard() {
+export default function CleanAdminDashboard() {
   const [stocks, setStocks] = useState(mockStocks);
   const [requisitions, setRequisitions] = useState(mockRequisitions);
   const [projects, setProjects] = useState(mockProjects);
   const [users, setUsers] = useState(mockUsers);
   const [filteredRequisitions, setFilteredRequisitions] = useState(mockRequisitions);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [reportType, setReportType] = useState('stock');
   const [reportPeriod, setReportPeriod] = useState('weekly');
-  const [selectedProject, setSelectedProject] = useState('all');
+  const [newProjectData, setNewProjectData] = useState({
+    name: '',
+    budget: '',
+    startDate: '',
+    expectedCompletionDate: '',
+  });
+  const [editingUser, setEditingUser] = useState(null);
+  const [isAddUserFormVisible, setIsAddUserFormVisible] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
+  const [isAddProjectFormVisible, setIsAddProjectFormVisible] = useState(false);
+  const [selectedProjectForAnalysis, setSelectedProjectForAnalysis] = useState(null);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [selectedDashboardCard, setSelectedDashboardCard] = useState(null);
 
   // Filter requisitions based on search query
   useEffect(() => {
@@ -84,7 +85,7 @@ export default function EnhancedAdminDashboard() {
 
   // Handler for updating requisition status
   const handleUpdateStatus = async (id, newStatus) => {
-    const updatedReqs = requisitions.map(req => 
+    const updatedReqs = requisitions.map(req =>
       req.id === id ? { ...req, status: newStatus } : req
     );
     setRequisitions(updatedReqs);
@@ -104,16 +105,80 @@ export default function EnhancedAdminDashboard() {
       return;
     }
 
-    const updatedStocks = stocks.map(stock => 
+    const updatedStocks = stocks.map(stock =>
       stock.name === req.item ? { ...stock, quantity: newQuantity } : stock
     );
     
-    const updatedReqs = requisitions.map(r => 
+    const updatedReqs = requisitions.map(r =>
       r.id === req.id ? { ...r, status: 'fulfilled' } : r
     );
 
     setStocks(updatedStocks);
     setRequisitions(updatedReqs);
+  };
+
+  const handleNewProjectChange = (e) => {
+    setNewProjectData({
+      ...newProjectData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleAddNewProject = (e) => {
+    e.preventDefault();
+    const newProject = {
+      id: `proj${projects.length + 1}`,
+      ...newProjectData,
+      budget: parseFloat(newProjectData.budget),
+      status: 'pending',
+    };
+    setProjects([...projects, newProject]);
+    setNewProjectData({ name: '', budget: '', startDate: '', expectedCompletionDate: '' });
+    setIsAddProjectFormVisible(false);
+  };
+
+  const handleDeleteProject = (projectId) => {
+    setProjects(projects.filter(p => p.id !== projectId));
+  };
+
+  const handleUpdateProject = (e) => {
+    e.preventDefault();
+    const updatedProjects = projects.map(project =>
+      project.id === editingProject.id ? { ...editingProject } : project
+    );
+    setProjects(updatedProjects);
+    setEditingProject(null);
+  };
+
+  const handleAddNewUser = (e) => {
+    e.preventDefault();
+    const newUser = {
+      id: `user${users.length + 1}`,
+      name: e.target.name.value,
+      email: e.target.email.value,
+      role: e.target.role.value,
+    };
+    setUsers([...users, newUser]);
+    e.target.reset();
+    setIsAddUserFormVisible(false);
+  };
+
+  const handleDeleteUser = (userId) => {
+    setUsers(users.filter(u => u.id !== userId));
+  };
+
+  const handleUpdateUser = (e) => {
+    e.preventDefault();
+    const updatedUsers = users.map(user =>
+      user.id === editingUser.id ? { ...editingUser } : user
+    );
+    setUsers(updatedUsers);
+    setEditingUser(null);
+  };
+
+  const handleLogout = () => {
+    console.log('User logged out');
+    // Here you would typically clear user session, tokens, and redirect to login page
   };
 
   // Generate report data
@@ -169,7 +234,7 @@ export default function EnhancedAdminDashboard() {
 
   const downloadReport = () => {
     const reportData = generateReportData();
-    const csvContent = "data:text/csv;charset=utf-8," + 
+    const csvContent = "data:text/csv;charset=utf-8," +
       Object.keys(reportData.data[0] || {}).join(",") + "\n" +
       reportData.data.map(row => Object.values(row).join(",")).join("\n");
     
@@ -182,177 +247,213 @@ export default function EnhancedAdminDashboard() {
     document.body.removeChild(link);
   };
 
-  const renderDashboard = () => (
-    <div className="dashboard-grid">
-      {/* Summary Cards */}
-      <div className="summary-cards">
-        <div className="summary-card">
-          <div className="summary-icon">
-            <FaBox />
-          </div>
-          <div className="summary-content">
-            <h4>Total Stock Value</h4>
-            <p className="summary-value">${calculateTotalStockValue().toLocaleString()}</p>
-          </div>
-        </div>
-        
-        <div className="summary-card">
-          <div className="summary-icon">
-            <FaClipboardList />
-          </div>
-          <div className="summary-content">
-            <h4>Pending Requisitions</h4>
-            <p className="summary-value">{requisitions.filter(r => r.status === 'pending').length}</p>
-          </div>
-        </div>
-        
-        <div className="summary-card">
-          <div className="summary-icon">
-            <FaDollarSign />
-          </div>
-          <div className="summary-content">
-            <h4>Active Projects</h4>
-            <p className="summary-value">{projects.filter(p => p.status === 'active').length}</p>
-          </div>
-        </div>
-      </div>
+  const renderDashboard = () => {
+    if (selectedDashboardCard) {
+      return renderDashboardCardDetails(selectedDashboardCard);
+    }
 
-      {/* Project Costs */}
-      <div className="card project-costs-card">
-        <h3>Project Cost Overview</h3>
-        <div className="project-selector">
-          <select 
-            value={selectedProject} 
-            onChange={(e) => setSelectedProject(e.target.value)}
-            className="project-select"
-          >
-            <option value="all">All Projects</option>
-            {projects.map(project => (
-              <option key={project.id} value={project.name}>{project.name}</option>
-            ))}
-          </select>
-        </div>
-        
-        <div className="projects-overview">
-          {(selectedProject === 'all' ? projects : projects.filter(p => p.name === selectedProject)).map(project => {
-            const spent = calculateProjectCost(project.name);
-            const progress = getProjectProgress(project.name);
-            
-            return (
-              <div key={project.id} className="project-item">
-                <div className="project-header">
-                  <h4>{project.name}</h4>
-                  <span className={`project-status status-${project.status}`}>
-                    {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
-                  </span>
-                </div>
-                <div className="project-metrics">
-                  <div className="metric">
-                    <span className="metric-label">Budget:</span>
-                    <span className="metric-value">${project.budget.toLocaleString()}</span>
-                  </div>
-                  <div className="metric">
-                    <span className="metric-label">Spent:</span>
-                    <span className="metric-value">${spent.toLocaleString()}</span>
-                  </div>
-                  <div className="metric">
-                    <span className="metric-label">Remaining:</span>
-                    <span className="metric-value">${(project.budget - spent).toLocaleString()}</span>
-                  </div>
-                </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${Math.min(progress, 100)}%` }}></div>
-                </div>
-                <span className="progress-text">{progress.toFixed(1)}% of budget used</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Stock Management */}
-      <div className="card stock-card">
-        <h3>Stock Management</h3>
-        <div className="stock-grid">
-          {stocks.map(stock => (
-            <div key={stock.id} className="stock-item">
-              <div className="stock-header">
-                <span className="stock-name">{stock.name}</span>
-                <span className={`stock-quantity ${stock.quantity < 20 ? 'low-stock' : ''}`}>
-                  {stock.quantity}
-                </span>
-              </div>
-              <div className="stock-details">
-                <div className="stock-detail">
-                  <span>Unit Cost: ${stock.unitCost}</span>
-                </div>
-                <div className="stock-detail">
-                  <span>Total Value: ${(stock.quantity * stock.unitCost).toLocaleString()}</span>
-                </div>
-                <div className="stock-detail">
-                  <span>Supplier: {stock.supplier}</span>
-                </div>
-              </div>
-              {stock.quantity < 20 && (
-                <div className="low-stock-warning">⚠️ Low Stock Alert</div>
-              )}
+    return (
+      <div className="dashboard-content">
+        <div className="summary-cards">
+          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('total-stock')}>
+            <div className="summary-icon">
+              <FaBox />
             </div>
-          ))}
+            <div className="summary-content">
+              <h4>Total Stock Value</h4>
+              <p className="summary-value">${calculateTotalStockValue().toLocaleString()}</p>
+            </div>
+          </div>
+          
+          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('requisitions')}>
+            <div className="summary-icon">
+              <FaClipboardList />
+            </div>
+            <div className="summary-content">
+              <h4>Requisitions</h4>
+              <p className="summary-value">{requisitions.filter(req => req.status === 'pending').length} Pending</p>
+            </div>
+          </div>
+
+          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('low-alerts')}>
+            <div className="summary-icon">
+              <FaBell />
+            </div>
+            <div className="summary-content">
+              <h4>Low Stock Alerts</h4>
+              <p className="summary-value">{stocks.filter(stock => stock.quantity < 20).length}</p>
+            </div>
+          </div>
+          
+          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('active-projects')}>
+            <div className="summary-icon">
+              <FaDollarSign />
+            </div>
+            <div className="summary-content">
+              <h4>Active Projects</h4>
+              <p className="summary-value">{projects.filter(p => p.status === 'active').length}</p>
+            </div>
+          </div>
+
+          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('total-users')}>
+            <div className="summary-icon">
+              <FaUsers />
+            </div>
+            <div className="summary-content">
+              <h4>Total Users</h4>
+              <p className="summary-value">{users.length}</p>
+            </div>
+          </div>
+
+          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('pending-projects')}>
+            <div className="summary-icon">
+              <FaProjectDiagram />
+            </div>
+            <div className="summary-content">
+              <h4>Pending Projects</h4>
+              <p className="summary-value">{projects.filter(p => p.status === 'pending').length}</p>
+            </div>
+          </div>
         </div>
       </div>
+    );
+  };
 
-      {/* Recent Requisitions */}
-      <div className="card requisition-card">
-        <h3>Recent Requisitions</h3>
+  const renderDashboardCardDetails = (cardType) => {
+    let title = '';
+    let data = [];
+    let columns = [];
+    let columnMapping = {};
+
+    switch (cardType) {
+      case 'total-stock':
+        title = 'Stock Details';
+        columns = ['Item', 'Quantity', 'Unit Cost', 'Total Value', 'Supplier'];
+        columnMapping = { 'Item': 'name', 'Quantity': 'quantity', 'Unit Cost': 'unitCost', 'Total Value': 'totalValue', 'Supplier': 'supplier' };
+        data = stocks.map(stock => ({...stock, totalValue: stock.quantity * stock.unitCost}));
+        break;
+      case 'requisitions':
+        title = 'Requisitions';
+        columns = ['Item', 'Quantity', 'Project', 'Date', 'Status', 'Change Status'];
+        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Project': 'project', 'Date': 'requestDate', 'Status': 'status' };
+        data = requisitions;
+        break;
+      case 'low-alerts':
+        title = 'Low Stock Alerts';
+        columns = ['Item', 'Quantity', 'Supplier'];
+        columnMapping = { 'Item': 'name', 'Quantity': 'quantity', 'Supplier': 'supplier' };
+        data = stocks.filter(stock => stock.quantity < 20);
+        break;
+      case 'active-projects':
+        title = 'Active Projects';
+        columns = ['Name', 'Budget', 'Start Date', 'Expected Completion Date'];
+        columnMapping = { 'Name': 'name', 'Budget': 'budget', 'Start Date': 'startDate', 'Expected Completion Date': 'expectedCompletionDate' };
+        data = projects.filter(p => p.status === 'active');
+        break;
+      case 'total-users':
+        title = 'All Users';
+        columns = ['Name', 'Email', 'Role'];
+        columnMapping = { 'Name': 'name', 'Email': 'email', 'Role': 'role' };
+        data = users;
+        break;
+      case 'pending-projects':
+        title = 'Pending Projects';
+        columns = ['Name', 'Budget', 'Start Date', 'Expected Completion Date'];
+        columnMapping = { 'Name': 'name', 'Budget': 'budget', 'Start Date': 'startDate', 'Expected Completion Date': 'expectedCompletionDate' };
+        data = projects.filter(p => p.status === 'pending');
+        break;
+      default:
+        break;
+    }
+
+    return (
+      <div className="card">
+        <div className="card-header">
+          <h3>{title}</h3>
+          <button className="btn btn-danger" onClick={() => setSelectedDashboardCard(null)}>Close</button>
+        </div>
         <div className="table-container">
-          <table className="requisition-table">
+          <table className="data-table">
             <thead>
               <tr>
-                <th>Item</th>
-                <th>Quantity</th>
-                <th>Project</th>
-                <th>Cost</th>
+                {columns.map(col => <th key={col}>{col}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((item, index) => (
+                <tr key={index}>
+                  {columns.map(col => {
+                    if (col === 'Change Status') {
+                      return (
+                        <td key={col}>
+                          <select
+                            value={item.status}
+                            onChange={(e) => handleUpdateStatus(item.id, e.target.value)}
+                            className="form-grid-select"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="fulfilled">Fulfilled</option>
+                          </select>
+                        </td>
+                      );
+                    }
+                    return <td key={col}>{item[columnMapping[col]]}</td>
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderProjectManagement = () => (
+    <div className="section-content">
+      <div className="card">
+        <div className="card-header">
+          <h3>Project Management</h3>
+          <button className="btn btn-primary" onClick={() => setIsAddProjectFormVisible(true)}>Add Project</button>
+        </div>
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Budget</th>
+                <th>Start Date</th>
+                <th>Expected Date of Completion</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredRequisitions.slice(0, 5).map(req => (
-                <tr key={req.id}>
-                  <td>{req.item}</td>
-                  <td>{req.quantity}</td>
-                  <td>{req.project}</td>
-                  <td>${(req.quantity * req.unitCost).toLocaleString()}</td>
+              {projects.map(project => (
+                <tr key={project.id}>
+                  <td onClick={() => setSelectedProjectForAnalysis(project)} className="clickable">{project.name}</td>
+                  <td>${project.budget.toLocaleString()}</td>
+                  <td>{project.startDate}</td>
+                  <td>{project.expectedCompletionDate}</td>
                   <td>
-                    <span className={`status-badge status-${req.status}`}>
-                      {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                    <span className={`status-badge status-${project.status}`}>
+                      {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
                     </span>
                   </td>
                   <td className="actions-cell">
-                    {req.status === 'pending' && (
-                      <>
-                        <button 
-                          className="action-button approve" 
-                          onClick={() => handleUpdateStatus(req.id, 'approved')}
-                        >
-                          Approve
-                        </button>
-                        <button 
-                          className="action-button reject" 
-                          onClick={() => handleUpdateStatus(req.id, 'rejected')}
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
-                    {req.status === 'approved' && (
-                      <button 
-                        className="action-button fulfill" 
-                        onClick={() => handleFulfillRequisition(req)}
-                      >
-                        Fulfill
-                      </button>
-                    )}
+                    <button
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => setEditingProject(project)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleDeleteProject(project.id)}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -360,6 +461,192 @@ export default function EnhancedAdminDashboard() {
           </table>
         </div>
       </div>
+
+      {selectedProjectForAnalysis && renderCostAnalysis(selectedProjectForAnalysis)}
+
+      {isAddProjectFormVisible && !editingProject && (
+        <div className="card">
+          <h3>Add New Project</h3>
+          <form onSubmit={handleAddNewProject} className="form-grid">
+            <input type="text" name="name" placeholder="Project Name" value={newProjectData.name} onChange={handleNewProjectChange} required />
+            <input type="number" name="budget" placeholder="Budget" step="0.01" value={newProjectData.budget} onChange={handleNewProjectChange} required />
+            <input type="date" name="startDate" placeholder="Start Date" value={newProjectData.startDate} onChange={handleNewProjectChange} required />
+            <input type="date" name="expectedCompletionDate" placeholder="Expected Completion Date" value={newProjectData.expectedCompletionDate} onChange={handleNewProjectChange} required />
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">Add Project</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsAddProjectFormVisible(false)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {editingProject && (
+        <div className="card">
+          <h3>Edit Project</h3>
+          <form onSubmit={handleUpdateProject} className="form-grid">
+            <input type="text" name="name" placeholder="Project Name" value={editingProject.name} onChange={(e) => setEditingProject({...editingProject, name: e.target.value})} required />
+            <input type="number" name="budget" placeholder="Budget" step="0.01" value={editingProject.budget} onChange={(e) => setEditingProject({...editingProject, budget: e.target.value})} required />
+            <input type="date" name="startDate" placeholder="Start Date" value={editingProject.startDate} onChange={(e) => setEditingProject({...editingProject, startDate: e.target.value})} required />
+            <input type="date" name="expectedCompletionDate" placeholder="Expected Completion Date" value={editingProject.expectedCompletionDate} onChange={(e) => setEditingProject({...editingProject, expectedCompletionDate: e.target.value})} required />
+            <select name="status" value={editingProject.status} onChange={(e) => setEditingProject({...editingProject, status: e.target.value})} required>
+              <option value="pending">Pending</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+            </select>
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">Update Project</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setEditingProject(null)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderCostAnalysis = (project) => {
+    const spent = calculateProjectCost(project.name);
+    const progress = getProjectProgress(project.name);
+    const projectRequisitions = requisitions.filter(r => r.project === project.name);
+
+    return (
+      <div className="card">
+        <div className="card-header">
+          <h3>Cost Analysis for {project.name}</h3>
+          <button className="btn btn-danger" onClick={() => setSelectedProjectForAnalysis(null)}>Close</button>
+        </div>
+        <div className="project-metrics">
+          <div className="metric">
+            <span className="metric-label">Budget:</span>
+            <span className="metric-value">${project.budget.toLocaleString()}</span>
+          </div>
+          <div className="metric">
+            <span className="metric-label">Spent:</span>
+            <span className="metric-value">${spent.toLocaleString()}</span>
+          </div>
+          <div className="metric">
+            <span className="metric-label">Remaining:</span>
+            <span className="metric-value">${(project.budget - spent).toLocaleString()}</span>
+          </div>
+          <div className="metric">
+            <span className="metric-label">Progress:</span>
+            <span className="metric-value">{progress.toFixed(1)}%</span>
+          </div>
+        </div>
+        <h4>Requisitions for this Project</h4>
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Cost</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projectRequisitions.map(req => (
+                <tr key={req.id}>
+                  <td>{req.item}</td>
+                  <td>{req.quantity}</td>
+                  <td>${(req.quantity * req.unitCost).toLocaleString()}</td>
+                  <td>
+                    <span className={`status-badge status-${req.status}`}>
+                      {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderUsers = () => (
+    <div className="section-content">
+      <div className="card">
+        <div className="card-header">
+          <h3>User Management</h3>
+          <button className="btn btn-primary" onClick={() => setIsAddUserFormVisible(true)}>Add User</button>
+        </div>
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map(user => (
+                <tr key={user.id}>
+                  <td>{user.name}</td>
+                  <td>{user.email}</td>
+                  <td>{user.role}</td>
+                  <td className="actions-cell">
+                    <button
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => setEditingUser(user)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleDeleteUser(user.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {isAddUserFormVisible && !editingUser && (
+        <div className="card">
+          <h3>Add New User</h3>
+          <form onSubmit={handleAddNewUser} className="form-grid">
+            <input type="text" name="name" placeholder="Full Name" required />
+            <input type="email" name="email" placeholder="Email Address" required />
+            <select name="role" required>
+              <option value="">Select Role</option>
+              <option value="Manager">Manager</option>
+              <option value="Stock Clerk">Stock Clerk</option>
+              <option value="Foreman">Foreman</option>
+              <option value="Regular Staff">Regular Staff</option>
+            </select>
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">Add User</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsAddUserFormVisible(false)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {editingUser && (
+        <div className="card">
+          <h3>Edit User</h3>
+          <form onSubmit={handleUpdateUser} className="form-grid">
+            <input type="text" name="name" placeholder="Full Name" value={editingUser.name} onChange={(e) => setEditingUser({...editingUser, name: e.target.value})} required />
+            <input type="email" name="email" placeholder="Email Address" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} required />
+            <select name="role" value={editingUser.role} onChange={(e) => setEditingUser({...editingUser, role: e.target.value})} required>
+              <option value="Manager">Manager</option>
+              <option value="Stock Clerk">Stock Clerk</option>
+              <option value="Foreman">Foreman</option>
+              <option value="Regular Staff">Regular Staff</option>
+            </select>
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">Update User</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setEditingUser(null)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 
@@ -367,7 +654,7 @@ export default function EnhancedAdminDashboard() {
     const reportData = generateReportData();
     
     return (
-      <div className="reports-section">
+      <div className="section-content">
         <div className="reports-controls">
           <div className="control-group">
             <label>Report Type:</label>
@@ -387,7 +674,7 @@ export default function EnhancedAdminDashboard() {
             </select>
           </div>
           
-          <button className="download-button" onClick={downloadReport}>
+          <button className="btn btn-primary" onClick={downloadReport}>
             <FaDownload /> Download CSV
           </button>
         </div>
@@ -412,8 +699,8 @@ export default function EnhancedAdminDashboard() {
                 </div>
               </div>
               
-              <div className="report-table-container">
-                <table className="report-table">
+              <div className="table-container">
+                <table className="data-table">
                   <thead>
                     <tr>
                       <th>Item</th>
@@ -433,8 +720,8 @@ export default function EnhancedAdminDashboard() {
                         <td>${item.totalValue.toLocaleString()}</td>
                         <td>{item.supplier}</td>
                         <td>
-                          {item.lowStock ? 
-                            <span className="status-badge status-warning">Low Stock</span> : 
+                          {item.lowStock ?
+                            <span className="status-badge status-warning">Low Stock</span> :
                             <span className="status-badge status-normal">Normal</span>
                           }
                         </td>
@@ -467,8 +754,8 @@ export default function EnhancedAdminDashboard() {
                 </div>
               </div>
               
-              <div className="report-table-container">
-                <table className="report-table">
+              <div className="table-container">
+                <table className="data-table">
                   <thead>
                     <tr>
                       <th>Item</th>
@@ -499,13 +786,17 @@ export default function EnhancedAdminDashboard() {
               </div>
             </div>
           )}
-
+          
           {reportType === 'projects' && (
             <div className="report-content">
               <div className="report-summary">
                 <div className="summary-stat">
                   <span className="stat-label">Total Projects:</span>
                   <span className="stat-value">{reportData.data.length}</span>
+                </div>
+                <div className="summary-stat">
+                  <span className="stat-label">Active Projects:</span>
+                  <span className="stat-value">{reportData.data.filter(p => p.status === 'active').length}</span>
                 </div>
                 <div className="summary-stat">
                   <span className="stat-label">Total Budget:</span>
@@ -517,8 +808,8 @@ export default function EnhancedAdminDashboard() {
                 </div>
               </div>
               
-              <div className="report-table-container">
-                <table className="report-table">
+              <div className="table-container">
+                <table className="data-table">
                   <thead>
                     <tr>
                       <th>Project</th>
@@ -537,8 +828,8 @@ export default function EnhancedAdminDashboard() {
                         <td>${project.spent.toLocaleString()}</td>
                         <td>${project.remaining.toLocaleString()}</td>
                         <td>
-                          <div className="mini-progress-bar">
-                            <div className="mini-progress-fill" style={{ width: `${Math.min(project.progress, 100)}%` }}></div>
+                          <div className="progress-bar">
+                            <div className="progress-fill" style={{ width: `${Math.min(project.progress, 100)}%` }}></div>
                           </div>
                           <span>{project.progress.toFixed(1)}%</span>
                         </td>
@@ -560,11 +851,11 @@ export default function EnhancedAdminDashboard() {
   };
 
   const renderRequisitions = () => (
-    <div className="requisitions-section">
+    <div className="section-content">
       <div className="card">
         <h3>All Requisitions</h3>
         <div className="table-container">
-          <table className="requisition-table">
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Item</th>
@@ -573,7 +864,7 @@ export default function EnhancedAdminDashboard() {
                 <th>Cost</th>
                 <th>Date</th>
                 <th>Status</th>
-                <th>Actions</th>
+                <th>Change Status</th>
               </tr>
             </thead>
             <tbody>
@@ -589,31 +880,17 @@ export default function EnhancedAdminDashboard() {
                       {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
                     </span>
                   </td>
-                  <td className="actions-cell">
-                    {req.status === 'pending' && (
-                      <>
-                        <button 
-                          className="action-button approve" 
-                          onClick={() => handleUpdateStatus(req.id, 'approved')}
-                        >
-                          Approve
-                        </button>
-                        <button 
-                          className="action-button reject" 
-                          onClick={() => handleUpdateStatus(req.id, 'rejected')}
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
-                    {req.status === 'approved' && (
-                      <button 
-                        className="action-button fulfill" 
-                        onClick={() => handleFulfillRequisition(req)}
-                      >
-                        Fulfill
-                      </button>
-                    )}
+                  <td>
+                    <select
+                      value={req.status}
+                      onChange={(e) => handleUpdateStatus(req.id, e.target.value)}
+                      className="form-grid-select"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="fulfilled">Fulfilled</option>
+                    </select>
                   </td>
                 </tr>
               ))}
@@ -637,12 +914,12 @@ export default function EnhancedAdminDashboard() {
     e.target.reset();
   };
 
-  const renderStock = () => (
-    <div className="stock-section">
+  const renderStockManagement = () => (
+    <div className="section-content">
       <div className="card">
         <h3>Stock Inventory</h3>
         <div className="table-container">
-          <table className="requisition-table">
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Item</th>
@@ -666,1044 +943,699 @@ export default function EnhancedAdminDashboard() {
           </table>
         </div>
       </div>
-    </div>
-  );
-
-  const renderAddStock = () => (
-    <div className="add-stock-section">
-        <div className="card">
+      
+      <div className="card">
         <h3>Add New Item</h3>
-        <form onSubmit={handleAddNewItem}>
-          <div className="add-item-form">
-            <input type="text" name="name" placeholder="Item Name" required />
-            <input type="number" name="quantity" placeholder="Quantity" required />
-            <input type="number" name="unitCost" placeholder="Unit Cost" step="0.01" required />
-            <input type="text" name="supplier" placeholder="Supplier" required />
-            <button type="submit" className="action-button approve">Add Item</button>
+        <form onSubmit={handleAddNewItem} className="form-grid">
+          <input type="text" name="name" placeholder="Item Name" required />
+          <input type="number" name="quantity" placeholder="Quantity" required />
+          <input type="number" name="unitCost" placeholder="Unit Cost" step="0.01" required />
+          <input type="text" name="supplier" placeholder="Supplier" required />
+          <div className="form-actions">
+            <button type="submit" className="btn btn-primary">Add Item</button>
           </div>
         </form>
       </div>
     </div>
   );
 
-  const handleAddNewUser = (e) => {
-    e.preventDefault();
-    const newUser = {
-      id: `user${users.length + 1}`,
-      name: e.target.name.value,
-      email: e.target.email.value,
-      role: e.target.role.value,
-    };
-    setUsers([...users, newUser]);
-    e.target.reset();
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'dashboard':
+        return renderDashboard();
+      case 'stock':
+        return renderStockManagement();
+      case 'requisitions':
+        return renderRequisitions();
+      case 'projects':
+        return renderProjectManagement();
+      case 'users':
+        return renderUsers();
+      case 'reports':
+        return renderReports();
+      case 'notifications':
+        return renderNotifications();
+      default:
+        return renderDashboard();
+    }
   };
 
-  const renderAddUser = () => (
-    <div className="add-user-section">
-      <div className="card">
-        <h3>Add New User</h3>
-        <form onSubmit={handleAddNewUser}>
-          <div className="add-item-form">
-            <input type="text" name="name" placeholder="Full Name" required />
-            <input type="email" name="email" placeholder="Email Address" required />
-            <select name="role" required>
-              <option value="">Select Role</option>
-              <option value="Admin">Admin</option>
-              <option value="Manager">Manager</option>
-              <option value="Staff">Staff</option>
-            </select>
-            <button type="submit" className="action-button approve">Add User</button>
+  const renderNotifications = () => {
+    if (selectedNotification) {
+      return renderNotificationDetails(selectedNotification);
+    }
+
+    return (
+      <div className="section-content">
+        <h3>Notifications</h3>
+        <div className="summary-cards">
+          <div className="summary-card clickable" onClick={() => setSelectedNotification('low-stock')}>
+            <div className="summary-icon"><FaBox /></div>
+            <div className="summary-content">
+              <h4>Low Stock</h4>
+              <p className="summary-value">{stocks.filter(stock => stock.quantity < 20).length}</p>
+            </div>
           </div>
-        </form>
+          <div className="summary-card clickable" onClick={() => setSelectedNotification('pending-requisitions')}>
+            <div className="summary-icon"><FaClipboardList /></div>
+            <div className="summary-content">
+              <h4>Pending Requisitions</h4>
+              <p className="summary-value">{requisitions.filter(req => req.status === 'pending').length}</p>
+            </div>
+          </div>
+          <div className="summary-card clickable" onClick={() => setSelectedNotification('overdue-approvals')}>
+            <div className="summary-icon"><FaBell /></div>
+            <div className="summary-content">
+              <h4>Overdue Approvals</h4>
+              <p className="summary-value">1</p>
+            </div>
+          </div>
+          <div className="summary-card clickable" onClick={() => setSelectedNotification('urgent-requisitions')}>
+            <div className="summary-icon"><FaBell /></div>
+            <div className="summary-content">
+              <h4>Urgent Requisitions</h4>
+              <p className="summary-value">1</p>
+            </div>
+          </div>
+          <div className="summary-card clickable" onClick={() => setSelectedNotification('pending-tasks')}>
+            <div className="summary-icon"><FaBell /></div>
+            <div className="summary-content">
+              <h4>Pending Tasks</h4>
+              <p className="summary-value">1</p>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const renderNotificationDetails = (notificationType) => {
+    let title = '';
+    let data = [];
+    let columns = [];
+    let columnMapping = {};
+
+    switch (notificationType) {
+      case 'low-stock':
+        title = 'Low Stock Items';
+        columns = ['Item', 'Quantity', 'Supplier'];
+        columnMapping = { 'Item': 'name', 'Quantity': 'quantity', 'Supplier': 'supplier' };
+        data = stocks.filter(stock => stock.quantity < 20);
+        break;
+      case 'pending-requisitions':
+        title = 'Pending Requisitions';
+        columns = ['Item', 'Quantity', 'Project', 'Date'];
+        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Project': 'project', 'Date': 'requestDate' };
+        data = requisitions.filter(req => req.status === 'pending');
+        break;
+      case 'overdue-approvals':
+        title = 'Overdue Approvals';
+        columns = ['Item', 'Project', 'Date'];
+        columnMapping = { 'Item': 'item', 'Project': 'project', 'Date': 'date' };
+        data = [{ item: 'Approval for XX', project: 'Project Y', date: '2025-08-10' }];
+        break;
+      case 'urgent-requisitions':
+        title = 'Urgent Requisitions';
+        columns = ['Item', 'Project', 'Date'];
+        columnMapping = { 'Item': 'item', 'Project': 'project', 'Date': 'date' };
+        data = [{ item: 'Urgent requisition for YY', project: 'Project Z', date: '2025-08-15' }];
+        break;
+      case 'pending-tasks':
+        title = 'Pending Tasks';
+        columns = ['Task', 'Due Date'];
+        columnMapping = { 'Task': 'task', 'Due Date': 'dueDate' };
+        data = [{ task: 'Pending task: ZZ', dueDate: '2025-08-20' }];
+        break;
+      default:
+        break;
+    }
+
+    return (
+      <div className="card">
+        <div className="card-header">
+          <h3>{title}</h3>
+          <button className="btn btn-danger" onClick={() => setSelectedNotification(null)}>Close</button>
+        </div>
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                {columns.map(col => <th key={col}>{col}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((item, index) => (
+                <tr key={index}>
+                  {columns.map(col => <td key={col}>{item[columnMapping[col]]}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className={`dashboard-container ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
-        
-        :root {
-          --background-dark: #0f172a;
-          --card-dark: #1e293b;
-          --card-hover: #334155;
-          --primary-color: #3b82f6;
-          --primary-hover: #2563eb;
-          --secondary-color: #8b5cf6;
-          --success-color: #10b981;
-          --warning-color: #f59e0b;
-          --danger-color: #ef4444;
-          --text-light: #f8fafc;
-          --text-medium: #cbd5e1;
-          --text-dark: #64748b;
-          --border-color: #334155;
-          --shadow-light: 0 4px 15px rgba(0, 0, 0, 0.3);
-          --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.4);
-          --border-radius: 16px;
-          --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-          box-sizing:content-box;
-        }
-
+    <div className={`dashboard-container ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
+      <style jsx>{`
+        /* General Body and Layout */
         body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
           margin: 0;
-          font-family: 'Quicksand', sans-serif;
-          background: linear-gradient(135deg, var(--background-dark) 0%, #1e293b 100%);
-          color: var(--text-light);
-          -webkit-font-smoothing: antialiased;
-          -moz-osx-font-smoothing: grayscale;
-          min-height: 100vh;
-          width: 100%;
+          padding: 0;
+          background-color: #f0f2f5;
+          color: #333;
         }
 
         .dashboard-container {
           display: flex;
           min-height: 100vh;
-          position: relative;
-          margin: 0;
         }
 
-        /* Sidebar Styles */
+        /* Sidebar */
         .sidebar {
-          width: 280px;
-          background: linear-gradient(180deg, var(--card-dark) 0%, #0f172a 100%);
-          backdrop-filter: blur(10px);
-          border-right: 1px solid var(--border-color);
-          transition: var(--transition);
-          flex-shrink: 0;
+          width: 250px;
+          background-color: #1a237e; /* Deep blue */
+          color: #fff;
+          display: flex;
+          flex-direction: column;
+          transition: width 0.3s ease;
           position: fixed;
-          height: 100vh;
-          padding: 2rem;
+          height: 100%;
           overflow-y: auto;
+          z-index: 1000;
         }
 
-        .sidebar.open {
-          transform: translateX(0);
-          box-shadow: var(--shadow-hover);
+        .sidebar-collapsed {
+          width: 60px;
         }
 
         .sidebar-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 3rem;
-          padding-bottom: 1.5rem;
-          border-bottom: 1px solid var(--border-color);
+          padding: 20px;
+          background-color: #1a237e;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          white-space: nowrap;
         }
 
         .sidebar-header h2 {
-          font-size: 1.75rem;
-          font-weight: 700;
-          background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
           margin: 0;
-        }
-
-        .close-menu {
-          color: var(--text-medium);
-          cursor: pointer;
           font-size: 1.5rem;
-          transition: var(--transition);
-          padding: 0.5rem;
-          border-radius: 8px;
         }
 
-        .close-menu:hover {
-          color: var(--text-light);
-          background-color: var(--border-color);
+        .toggle-btn {
+          background: none;
+          border: none;
+          color: #fff;
+          cursor: pointer;
+          font-size: 1.2rem;
+          padding: 5px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        .sidebar-menu {
+        .sidebar-nav ul {
           list-style: none;
           padding: 0;
           margin: 0;
         }
 
-        .sidebar-menu li a {
+        .sidebar-nav li {
+          padding: 15px 20px;
+          cursor: pointer;
           display: flex;
           align-items: center;
-          padding: 1.2rem 1.5rem;
-          color: var(--text-medium);
-          text-decoration: none;
-          border-radius: var(--border-radius);
-          transition: var(--transition);
-          font-weight: 500;
-          margin-bottom: 0.75rem;
-          border: 1px solid transparent;
+          gap: 15px;
+          font-size: 1.1rem;
+          transition: background-color 0.2s ease, color 0.2s ease;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
-        .sidebar-menu li a:hover {
-          background: linear-gradient(135deg, var(--card-hover) 0%, var(--border-color) 100%);
-          color: var(--text-light);
-          transform: translateX(8px);
-          border-color: var(--border-color);
+        .sidebar-nav li:hover,
+        .sidebar-nav li.active {
+          background-color: #2c387e;
+          color: #ffeb3b; /* Yellow accent for active/hover */
         }
 
-        .sidebar-menu li a.active {
-          background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-          color: white;
-          box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        .sidebar-nav li svg {
+          font-size: 1.2rem;
+          min-width: 24px;
         }
 
-        .sidebar-menu li a svg {
-          margin-right: 1rem;
-          font-size: 1.25rem;
+        .sidebar-collapsed .sidebar-header h2,
+        .sidebar-collapsed .sidebar-nav span {
+          display: none;
         }
 
-        /* Main Content */
+        /* Main Content Area */
         .main-content {
+          margin-left: 250px;
           flex-grow: 1;
-          padding: 1rem;
-          transition: var(--transition);
-          min-height: 100vh;
+          padding: 20px;
+          transition: margin-left 0.3s ease;
         }
 
-        
+        .sidebar-collapsed + .main-content {
+          margin-left: 60px;
+        }
 
+        /* Header */
         .main-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 2rem;
-          background: linear-gradient(135deg, var(--card-dark) 0%, var(--card-hover) 100%);
-          border-radius: var(--border-radius);
-          box-shadow: var(--shadow-light);
-          margin-bottom: 2rem;
-          border: 1px solid var(--border-color);
-        }
-
-        .menu-toggle {
-          font-size: 1.5rem;
-          color: var(--text-medium);
-          cursor: pointer;
-          transition: var(--transition);
-          padding: 0.75rem;
+          padding: 15px 20px;
+          background-color: #fff;
           border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+          margin-bottom: 20px;
         }
 
-        .menu-toggle:hover {
-          color: var(--text-light);
-          background-color: var(--border-color);
+        .menu-btn {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          cursor: pointer;
+          color: #555;
+          display: none;
         }
 
-        .header-title {
-          margin: 0;
-          font-size: 2rem;
-          font-weight: 700;
-          background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+        @media (max-width: 768px) {
+          .sidebar {
+            left: -250px;
+            transition: left 0.3s ease;
+          }
+
+          .sidebar-collapsed {
+            left: 0;
+            width: 250px;
+          }
+
+          .main-content {
+            margin-left: 0;
+          }
+
+          .menu-btn {
+            display: block;
+          }
+
+          .search-bar {
+            max-width: none; /* Allow search bar to take full width on small screens */
+          }
         }
 
         .search-bar {
-          position: relative;
-          width: 320px;
+          display: flex;
+          align-items: center;
+          background-color: #f7f7f7;
+          border-radius: 50px;
+          padding: 8px 15px;
+          width: 100%;
+          max-width: 400px;
         }
 
         .search-bar input {
+          border: none;
+          background: transparent;
           width: 100%;
-          padding: 0.875rem 1.25rem 0.875rem 3rem;
-          border: 1px solid var(--border-color);
-          border-radius: 50px;
           font-size: 1rem;
-          background-color: var(--background-dark);
-          color: var(--text-light);
-          transition: var(--transition);
           outline: none;
-          font-family: 'Quicksand', sans-serif;
+          margin-left: 10px;
         }
 
-        .search-bar input::placeholder {
-          color: var(--text-dark);
+        .search-icon {
+          color: #aaa;
         }
 
-        .search-bar input:focus {
-          border-color: var(--primary-color);
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-          background-color: var(--card-dark);
-        }
-
-        .search-bar .search-icon {
-          position: absolute;
-          left: 1.25rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: var(--text-dark);
-          transition: var(--transition);
-        }
-
-        .search-bar input:focus + .search-icon {
-          color: var(--primary-color);
-        }
-
-        /* Dashboard Grid */
-        .dashboard-grid {
-          display: grid;
-          gap: 2rem;
+        /* Dashboard Content */
+        .dashboard-content {
+          padding: 20px 0;
         }
 
         .summary-cards {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 1.5rem;
-          margin-bottom: 2rem;
+          gap: 20px;
         }
 
         .summary-card {
-          background: linear-gradient(135deg, var(--card-dark) 0%, var(--card-hover) 100%);
-          padding: 2rem;
-          border-radius: var(--border-radius);
-          box-shadow: var(--shadow-light);
-          border: 1px solid var(--border-color);
-          transition: var(--transition);
+          background-color: #fff;
+          padding: 25px;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
           display: flex;
           align-items: center;
-          gap: 1.5rem;
-        }
-
-        .summary-card:hover {
-          transform: translateY(-5px);
-          box-shadow: var(--shadow-hover);
-          border-color: var(--primary-color);
+          gap: 20px;
         }
 
         .summary-icon {
+          background-color: #e3f2fd;
+          color: #1a237e;
           width: 60px;
           height: 60px;
           border-radius: 50%;
-          background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
           display: flex;
           align-items: center;
           justify-content: center;
-          color: white;
           font-size: 1.5rem;
         }
 
         .summary-content h4 {
-          margin: 0 0 0.5rem 0;
-          font-size: 0.9rem;
-          font-weight: 600;
-          color: var(--text-medium);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .summary-value {
-          font-size: 2rem;
-          font-weight: 700;
-          color: var(--text-light);
           margin: 0;
-        }
-
-        /* Cards */
-        .card {
-          background: linear-gradient(135deg, var(--card-dark) 0%, var(--card-hover) 100%);
-          padding: 2.5rem;
-          border-radius: var(--border-radius);
-          box-shadow: var(--shadow-light);
-          border: 1px solid var(--border-color);
-          transition: var(--transition);
-          margin-bottom: 2rem;
-        }
-
-        .card:hover {
-          transform: translateY(-5px);
-          box-shadow: var(--shadow-hover);
-        }
-
-        .card h3 {
-          margin-top: 0;
-          font-size: 1.75rem;
-          font-weight: 700;
-          color: var(--primary-color);
-          border-bottom: 2px solid var(--border-color);
-          padding-bottom: 1.5rem;
-          margin-bottom: 2rem;
-        }
-
-        /* Project Costs */
-        .project-costs-card {
-          grid-column: 1 / -1;
-        }
-
-        .project-selector {
-          margin-bottom: 2rem;
-        }
-
-        .project-select {
-          padding: 0.75rem 1rem;
-          border: 1px solid var(--border-color);
-          border-radius: 8px;
-          background-color: var(--background-dark);
-          color: var(--text-light);
-          font-family: 'Quicksand', sans-serif;
-          font-size: 1rem;
-          transition: var(--transition);
-        }
-
-        .project-select:focus {
-          outline: none;
-          border-color: var(--primary-color);
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .projects-overview {
-          display: grid;
-          gap: 1.5rem;
-        }
-
-        .project-item {
-          background-color: var(--background-dark);
-          padding: 2rem;
-          border-radius: 12px;
-          border: 1px solid var(--border-color);
-          transition: var(--transition);
-        }
-
-        .project-item:hover {
-          border-color: var(--primary-color);
-          box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
-        }
-
-        .project-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-        }
-
-        .project-header h4 {
-          margin: 0;
-          font-size: 1.25rem;
-          font-weight: 600;
-          color: var(--text-light);
-        }
-
-        .project-status {
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          font-size: 0.8rem;
-          font-weight: 600;
-          text-transform: uppercase;
-        }
-
-        .project-metrics {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-          gap: 1rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .metric {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .metric-label {
-          font-size: 0.85rem;
-          color: var(--text-medium);
+          color: #555;
           font-weight: 500;
         }
 
-        .metric-value {
-          font-size: 1.1rem;
+        .summary-value {
+          margin: 5px 0 0;
+          font-size: 2rem;
           font-weight: 600;
-          color: var(--text-light);
+          color: #1a237e;
         }
 
-        .progress-bar {
-          width: 100%;
-          height: 8px;
-          background-color: var(--border-color);
-          border-radius: 4px;
-          overflow: hidden;
-          margin-bottom: 0.5rem;
+        /* General Sections */
+        .section-content {
+          padding: 20px 0;
         }
 
-        .progress-fill {
-          height: 100%;
-          background: linear-gradient(90deg, var(--success-color), var(--primary-color));
-          transition: width 0.5s ease;
-        }
-
-        .progress-text {
-          font-size: 0.85rem;
-          color: var(--text-medium);
-        }
-
-        /* Stock Styles */
-        .stock-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 1.5rem;
-        }
-
-        .stock-item {
-          background-color: var(--background-dark);
-          padding: 1.5rem;
-          border-radius: 12px;
-          border: 1px solid var(--border-color);
-          transition: var(--transition);
-        }
-
-        .stock-item:hover {
-          border-color: var(--primary-color);
-          box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
-        }
-
-        .stock-item-detailed {
-          background-color: var(--background-dark);
-          padding: 2rem;
-          border-radius: 12px;
-          border: 1px solid var(--border-color);
-          transition: var(--transition);
-        }
-
-        .stock-item-detailed:hover {
-          border-color: var(--primary-color);
-          box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
-        }
-
-        .stock-header, .stock-item-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1rem;
-        }
-
-        .stock-name {
-          font-weight: 600;
-          color: var(--text-light);
-          font-size: 1.1rem;
-        }
-
-        .stock-item-header h4 {
-          margin: 0;
-          font-size: 1.25rem;
-          font-weight: 600;
-          color: var(--text-light);
-        }
-
-        .stock-quantity {
-          font-weight: 700;
-          color: var(--success-color);
-          font-size: 1.1rem;
-        }
-
-        .stock-quantity.low-stock {
-          color: var(--warning-color);
-        }
-
-        .stock-details, .stock-item-body {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-
-        .stock-detail, .stock-metric {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 0.9rem;
-        }
-
-        .stock-metric {
-          padding: 0.5rem 0;
-          border-bottom: 1px solid var(--border-color);
-        }
-
-        .stock-metric:last-child {
-          border-bottom: none;
-        }
-
-        .low-stock-warning {
-          background: linear-gradient(135deg, var(--warning-color), #f97316);
-          color: white;
-          padding: 0.75rem;
+        .card {
+          background-color: #fff;
           border-radius: 8px;
-          text-align: center;
-          font-weight: 600;
-          margin-top: 1rem;
-          font-size: 0.9rem;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+          padding: 25px;
+          margin-bottom: 20px;
+        }
+
+        .card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        }
+
+        .card h3 {
+          margin: 0;
+          font-size: 1.5rem;
+          color: #1a237e;
+        }
+
+        /* Buttons */
+        .btn {
+          padding: 10px 20px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          font-size: 1rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .btn-primary {
+          background-color: #1a237e;
+          color: #fff;
+        }
+
+        .btn-primary:hover {
+          background-color: #2c387e;
+        }
+
+        .btn-secondary {
+          background-color: #e0e0e0;
+          color: #555;
+        }
+
+        .btn-secondary:hover {
+          background-color: #d5d5d5;
+        }
+
+        .btn-danger {
+          background-color: #e53935;
+          color: #fff;
+        }
+
+        .btn-danger:hover {
+          background-color: #d32f2f;
+        }
+
+        .btn-success {
+          background-color: #43a047;
+          color: #fff;
+        }
+
+        .btn-success:hover {
+          background-color: #388e3c;
+        }
+
+        .btn-sm {
+          padding: 6px 12px;
+          font-size: 0.875rem;
         }
 
         /* Tables */
         .table-container {
           overflow-x: auto;
-          border-radius: 12px;
-          border: 1px solid var(--border-color);
         }
 
-        .requisition-table, .report-table {
+        .data-table {
           width: 100%;
-          border-collapse: separate;
-          border-spacing: 0;
-          background-color: var(--background-dark);
+          border-collapse: collapse;
         }
 
-        .requisition-table thead tr th, .report-table thead tr th {
-          background-color: var(--card-dark);
+        .data-table th, .data-table td {
+          padding: 15px;
           text-align: left;
-          padding: 1.25rem;
-          color: var(--text-medium);
+          border-bottom: 1px solid #e0e0e0;
+        }
+
+        .data-table th {
+          background-color: #fafafa;
           font-weight: 600;
-          font-size: 0.9rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          border-bottom: 1px solid var(--border-color);
+          color: #555;
         }
 
-        .requisition-table tbody tr, .report-table tbody tr {
-          transition: var(--transition);
-          border-bottom: 1px solid var(--border-color);
+        .data-table tbody tr:hover {
+          background-color: #f5f5f5;
         }
 
-        .requisition-table tbody tr:hover, .report-table tbody tr:hover {
-          background-color: var(--card-dark);
+        .clickable {
+          cursor: pointer;
+          color: #1a237e;
+          font-weight: 500;
+          transition: color 0.2s ease;
         }
 
-        .requisition-table tbody tr td, .report-table tbody tr td {
-          padding: 1.25rem;
-          vertical-align: middle;
-          color: var(--text-light);
+        .clickable:hover {
+          text-decoration: underline;
         }
 
         /* Status Badges */
         .status-badge {
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          font-size: 0.8rem;
+          padding: 5px 12px;
+          border-radius: 50px;
           font-weight: 600;
-          text-transform: uppercase;
-          display: inline-block;
+          font-size: 0.875rem;
+          text-transform: capitalize;
         }
 
-        .status-pending { background: linear-gradient(135deg, var(--warning-color), #f97316); color: white; }
-        .status-approved { background: linear-gradient(135deg, var(--success-color), #059669); color: white; }
-        .status-rejected { background: linear-gradient(135deg, var(--danger-color), #dc2626); color: white; }
-        .status-fulfilled { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; }
-        .status-active { background: linear-gradient(135deg, var(--success-color), #059669); color: white; }
-        .status-planning { background: linear-gradient(135deg, var(--secondary-color), #7c3aed); color: white; }
-        .status-normal { background: linear-gradient(135deg, var(--success-color), #059669); color: white; }
-        .status-warning { background: linear-gradient(135deg, var(--warning-color), #f97316); color: white; }
-
-        /* Action Buttons */
-        .action-button {
-          padding: 0.75rem 1.25rem;
-          border: none;
-          border-radius: 8px;
-          cursor: pointer;
-          margin-right: 0.5rem;
-          font-weight: 600;
-          font-family: 'Quicksand', sans-serif;
-          transition: var(--transition);
-          color: white;
-          font-size: 0.85rem;
+        .status-pending {
+          background-color: #fff3e0;
+          color: #ff9800;
         }
 
-        .action-button:hover {
-          transform: translateY(-2px);
-          box-shadow: var(--shadow-light);
+        .status-approved {
+          background-color: #e8f5e9;
+          color: #4caf50;
         }
 
-        .approve { 
-          background: linear-gradient(135deg, var(--success-color), #059669);
+        .status-fulfilled, .status-active {
+          background-color: #e3f2fd;
+          color: #2196f3;
         }
 
-        .reject { 
-          background: linear-gradient(135deg, var(--danger-color), #dc2626);
+        .status-rejected {
+          background-color: #ffebee;
+          color: #e53935;
         }
 
-        .fulfill { 
-          background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        .status-pending {
+          background-color: #fff3e0;
+          color: #ff9800;
         }
 
-        .actions-cell {
-          white-space: nowrap;
+        .status-warning {
+          background-color: #fff3e0;
+          color: #ff9800;
+        }
+
+        .status-normal {
+          background-color: #e8f5e9;
+          color: #4caf50;
+        }
+
+        /* Forms */
+        .form-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 15px;
+        }
+
+        .form-grid input, .form-grid select {
+          padding: 12px;
+          border: 1px solid #ccc;
+          border-radius: 5px;
+          font-size: 1rem;
+        }
+
+        .form-actions {
+          display: flex;
+          gap: 10px;
+          margin-top: 10px;
         }
 
         /* Reports Section */
-        .reports-section {
-          padding: 1rem 0;
-        }
-
         .reports-controls {
           display: flex;
-          gap: 2rem;
           align-items: center;
-          padding: 2rem;
-          background: linear-gradient(135deg, var(--card-dark) 0%, var(--card-hover) 100%);
-          border-radius: var(--border-radius);
-          margin-bottom: 2rem;
-          border: 1px solid var(--border-color);
+          gap: 15px;
+          margin-bottom: 20px;
           flex-wrap: wrap;
         }
 
         .control-group {
           display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .control-group label {
-          font-size: 0.9rem;
-          font-weight: 600;
-          color: var(--text-medium);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .control-group select {
-          padding: 0.75rem 1rem;
-          border: 1px solid var(--border-color);
-          border-radius: 8px;
-          background-color: var(--background-dark);
-          color: var(--text-light);
-          font-family: 'Quicksand', sans-serif;
-          font-size: 1rem;
-          transition: var(--transition);
-          min-width: 150px;
-        }
-
-        .control-group select:focus {
-          outline: none;
-          border-color: var(--primary-color);
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .download-button {
-          padding: 0.875rem 1.5rem;
-          background: linear-gradient(135deg, var(--success-color), #059669);
-          color: white;
-          border: none;
-          border-radius: 8px;
-          font-weight: 600;
-          font-family: 'Quicksand', sans-serif;
-          cursor: pointer;
-          transition: var(--transition);
-          display: flex;
           align-items: center;
-          gap: 0.5rem;
-        }
-
-        .download-button:hover {
-          transform: translateY(-2px);
-          box-shadow: var(--shadow-light);
-        }
-
-        .report-card {
-          margin-top: 0;
-        }
-
-        .report-content {
-          padding: 1rem 0;
+          gap: 8px;
         }
 
         .report-summary {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1.5rem;
-          margin-bottom: 2rem;
-          padding: 2rem;
-          background-color: var(--background-dark);
-          border-radius: 12px;
-          border: 1px solid var(--border-color);
+          display: flex;
+          gap: 20px;
+          flex-wrap: wrap;
+          margin-bottom: 20px;
+          padding-bottom: 20px;
+          border-bottom: 1px solid #e0e0e0;
         }
 
         .summary-stat {
           display: flex;
           flex-direction: column;
-          gap: 0.5rem;
-          text-align: center;
         }
 
         .stat-label {
-          font-size: 0.9rem;
-          color: var(--text-medium);
           font-weight: 500;
+          color: #888;
         }
 
         .stat-value {
           font-size: 1.5rem;
-          font-weight: 700;
-          color: var(--primary-color);
+          font-weight: 600;
+          color: #1a237e;
         }
 
-        .report-table-container {
-          border-radius: 12px;
-          overflow: hidden;
-          border: 1px solid var(--border-color);
-        }
-
-        .mini-progress-bar {
-          width: 60px;
-          height: 6px;
-          background-color: var(--border-color);
-          border-radius: 3px;
-          overflow: hidden;
-          display: inline-block;
-          margin-right: 0.5rem;
-        }
-
-        .mini-progress-fill {
-          height: 100%;
-          background: linear-gradient(90deg, var(--success-color), var(--primary-color));
-          transition: width 0.5s ease;
-        }
-
-        /* Loading and Error States */
-        .loading-container, .error-container {
+        /* Project Cost Analysis */
+        .project-metrics {
           display: flex;
-          justify-content: center;
-          align-items: center;
-          height: 100vh;
+          flex-wrap: wrap;
+          gap: 25px;
+          margin-bottom: 20px;
+          padding-bottom: 20px;
+          border-bottom: 1px solid #e0e0e0;
+        }
+
+        .metric {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .metric-label {
+          font-weight: 500;
+          color: #888;
+        }
+
+        .metric-value {
           font-size: 1.25rem;
           font-weight: 600;
+          color: #1a237e;
         }
 
-        .loading-container {
-          color: var(--primary-color);
+        .progress-bar {
+          background-color: #e0e0e0;
+          border-radius: 50px;
+          height: 8px;
+          width: 100px;
+          overflow: hidden;
         }
 
-        .error-container {
-          color: var(--danger-color);
-        }
-
-        /* Responsive Design */
-        @media (max-width: 1024px) {
-          .dashboard-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .summary-cards {
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-          }
-        }
-
-        @media (max-width: 768px) {
-          .main-content {
-            padding: 1rem;
-          }
-          
-          .main-header {
-            flex-direction: column;
-            gap: 1rem;
-            padding: 1.5rem;
-          }
-          
-          .header-title {
-            font-size: 1.5rem;
-            text-align: center;
-          }
-
-          .search-bar {
-            width: 100%;
-          }
-
-          .reports-controls {
-            flex-direction: column;
-            gap: 1rem;
-            align-items: stretch;
-          }
-
-          .stock-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .summary-cards {
-            grid-template-columns: 1fr;
-          }
-
-          .project-metrics {
-            grid-template-columns: 1fr;
-          }
-
-          .table-container {
-            overflow-x: auto;
-          }
-
-          .requisition-table, .report-table {
-            min-width: 600px;
-          }
-        }
-
-                * {
-          box-sizing: border-box;
-        }
-
-        body {
-          margin: 0;
-          font-family: 'Quicksand', sans-serif;
-          background: linear-gradient(135deg, var(--background-dark) 0%, #1e293b 100%);
-          color: var(--text-light);
-          -webkit-font-smoothing: antialiased;
-          -moz-osx-font-smoothing: grayscale;
-          min-height: 100vh;
-        }
-
-        .dashboard-container {
-          display: flex;
-          min-height: 100vh;
-          width: 100%;
-        }
-
-        /* Sidebar Styles */
-        .sidebar {
-          width: 280px;
-          background: linear-gradient(180deg, var(--card-dark) 0%, #0f172a 100%);
-          backdrop-filter: blur(10px);
-          border-right: 1px solid var(--border-color);
-          transition: var(--transition);
-          flex-shrink: 0;
-          position: fixed;
-          height: 100vh;
-          padding: 2rem;
-          overflow-y: auto;
-          transform: translateX(-100%);
-        }
-
-        .sidebar.open {
-          transform: translateX(0);
-          box-shadow: var(--shadow-hover);
-        }
-
-        .main-content {
-          flex-grow: 1;
-          padding: 2rem;
-          transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          min-height: 100vh;
-          margin-left: 0;
-          width: 100%;
-        }
-
-        .dashboard-container.sidebar-open .main-content {
-            margin-left: 280px;
-        }
-
-        .add-item-form {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .add-item-form input, .add-item-form select {
-            padding: 0.75rem 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background-color: var(--background-dark);
-            color: var(--text-light);
-            font-family: 'Quicksand', sans-serif;
-            font-size: 1rem;
-            transition: var(--transition);
-            flex-grow: 1;
-        }
-
-        .add-item-form input:focus, .add-item-form select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        @media (max-width: 1024px) {
-          .dashboard-container.sidebar-open .main-content {
-            margin-left: 0;
-          }
+        .progress-fill {
+          background-color: #4caf50;
+          height: 100%;
+          transition: width 0.3s ease;
         }
       `}</style>
 
-      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+      <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>Admin Panel</h2>
-          <div className="close-menu" onClick={() => setIsSidebarOpen(false)}>
+          {isSidebarOpen && <h2>Admin Dashboard</h2>}
+          <button className="toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <FaTimes />
-          </div>
+          </button>
         </div>
-        <ul className="sidebar-menu">
-          <li>
-            <a 
-              href="#" 
-              className={activeSection === 'dashboard' ? 'active' : ''} 
-              onClick={() => setActiveSection('dashboard')}
-            >
-              <FaHome /> Dashboard
-            </a>
-          </li>
-          <li>
-            <a 
-              href="#" 
-              className={activeSection === 'stock' ? 'active' : ''}
-              onClick={() => setActiveSection('stock')}
-            >
-              <FaBox /> Stock Management
-            </a>
-          </li>
-          <li>
-            <a 
-              href="#" 
-              className={activeSection === 'requisitions' ? 'active' : ''}
-              onClick={() => setActiveSection('requisitions')}
-            >
-              <FaClipboardList /> Requisitions
-            </a>
-          </li>
-          <li>
-            <a 
-              href="#" 
-              className={activeSection === 'reports' ? 'active' : ''}
-              onClick={() => setActiveSection('reports')}
-            >
-              <FaFileAlt /> Reports
-            </a>
-          </li>
-          <li>
-            <a 
-              href="#" 
-              className={activeSection === 'projects' ? 'active' : ''}
-              onClick={() => setActiveSection('projects')}
-            >
-              <FaChartLine /> Project Costs
-            </a>
-          </li>
-        </ul>
-      </div>
+        <nav className="sidebar-nav">
+          <ul>
+            <li className={activeSection === 'dashboard' ? 'active' : ''} onClick={() => setActiveSection('dashboard')}>
+              <FaHome /> {isSidebarOpen && <span>Dashboard</span>}
+            </li>
+            <li className={activeSection === 'stock' ? 'active' : ''} onClick={() => setActiveSection('stock')}>
+              <FaBox /> {isSidebarOpen && <span>Stock Management</span>}
+            </li>
+            <li className={activeSection === 'requisitions' ? 'active' : ''} onClick={() => setActiveSection('requisitions')}>
+              <FaClipboardList /> {isSidebarOpen && <span>Requisitions</span>}
+            </li>
+            <li className={activeSection === 'projects' ? 'active' : ''} onClick={() => setActiveSection('projects')}>
+              <FaProjectDiagram /> {isSidebarOpen && <span>Project Management</span>}
+            </li>
+            <li className={activeSection === 'users' ? 'active' : ''} onClick={() => setActiveSection('users')}>
+              <FaUsers /> {isSidebarOpen && <span>User Management</span>}
+            </li>
+            <li className={activeSection === 'reports' ? 'active' : ''} onClick={() => setActiveSection('reports')}>
+              <FaChartLine /> {isSidebarOpen && <span>Reports</span>}
+            </li>
+            <li className={activeSection === 'notifications' ? 'active' : ''} onClick={() => setActiveSection('notifications')}>
+              <FaBell /> {isSidebarOpen && <span>Notifications</span>}
+            </li>
+            <li onClick={handleLogout}>
+              <FaSignOutAlt /> {isSidebarOpen && <span>Logout</span>}
+            </li>
+          </ul>
+        </nav>
+      </aside>
 
-      <div className="main-content">
+      <main className="main-content">
         <header className="main-header">
-          <div className="menu-toggle" onClick={() => setIsSidebarOpen(true)}>
+          <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
             <FaBars />
-          </div>
-          <h1 className="header-title">
-            {activeSection === 'dashboard' && 'Admin Dashboard'}
-            {activeSection === 'stock' && 'Stock Management'}
-            {activeSection === 'requisitions' && 'Requisitions Management'}
-            {activeSection === 'reports' && 'Reports & Analytics'}
-            {activeSection === 'projects' && 'Project Cost Management'}
-          </h1>
+          </button>
           <div className="search-bar">
+            <FaSearch className="search-icon" />
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Search requisitions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <FaSearch className="search-icon" />
           </div>
         </header>
-
-        <div className="dashboard-content">
-          {activeSection === 'dashboard' && renderDashboard()}
-          {activeSection === 'stock' && renderStock()}
-          {activeSection === 'requisitions' && renderRequisitions()}
-          {activeSection === 'reports' && renderReports()}
-          {activeSection === 'projects' && renderDashboard()}
-        </div>
-      </div>
+        {renderContent()}
+      </main>
     </div>
   );
 }

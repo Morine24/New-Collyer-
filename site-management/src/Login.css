@@ -51,14 +51,14 @@ body {
 
 .login-form {
   background: #fff200;
-  padding: 2rem 2.5rem;
+  padding: 2.5rem 3rem; /* Increased padding */
   border-radius: 12px;
-  box-shadow: 0 2px 24px rgba(0,0,0,0.18);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.25); /* Enhanced shadow */
   width: 100%;
-  max-width: 350px;
+  max-width: 380px; /* Slightly wider */
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 1.5rem; /* Increased gap */
   border: 2px solid #111;
   animation: fadeIn 1.5s;
 }
@@ -73,16 +73,17 @@ body {
 
 .login-form input {
   margin-top: 0.5rem;
-  padding: 0.6rem;
-  border: 1.5px solid #111;
-  border-radius: 6px;
-  font-size: 1rem;
+  padding: 0.8rem 1rem; /* Increased padding */
+  border: 2px solid #111; /* Thicker border */
+  border-radius: 8px; /* Slightly more rounded */
+  font-size: 1.05rem;
   background: #fff;
   color: #111;
-  transition: border 0.2s;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .login-form input:focus {
   border-color: #ffd600;
+  box-shadow: 0 0 0 3px rgba(255, 214, 0, 0.4); /* Added subtle glow on focus */
   outline: none;
 }
 
@@ -90,18 +91,19 @@ body {
   background: #111;
   color: #fff200;
   border: none;
-  padding: 0.85rem;
-  border-radius: 6px;
-  font-size: 1.1rem;
+  padding: 1rem; /* Increased padding */
+  border-radius: 8px; /* Slightly more rounded */
+  font-size: 1.15rem; /* Slightly larger font */
   cursor: pointer;
   margin-top: 1rem;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  transition: background 0.2s, color 0.2s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Enhanced shadow */
+  transition: background 0.3s ease, color 0.3s ease, transform 0.2s ease;
 }
 .login-btn:hover {
   background: #ffd600;
   color: #111;
+  transform: translateY(-2px); /* Subtle lift effect */
 }
 
 .register-link {
@@ -111,11 +113,12 @@ body {
 .register-link a {
   color: #111;
   font-weight: 700;
-  text-decoration: underline;
-  transition: color 0.2s;
+  text-decoration: none; /* Removed underline by default */
+  transition: color 0.2s, text-decoration 0.2s;
 }
 .register-link a:hover {
   color: #d4af37;
+  text-decoration: underline; /* Underline on hover */
 }
 
 .error {
@@ -124,4 +127,29 @@ body {
   margin-top: -0.5rem;
   margin-bottom: 0.5rem;
   text-align: center;
+}
+
+@media (max-width: 480px) {
+  .login-form {
+    padding: 1.5rem 1.8rem;
+    max-width: 90%;
+  }
+
+  .login-title {
+    font-size: 1.8rem;
+  }
+
+  .login-subtitle {
+    font-size: 1rem;
+  }
+
+  .login-btn {
+    font-size: 1rem;
+    padding: 0.8rem;
+  }
+
+  .login-form input {
+    padding: 0.7rem;
+    font-size: 0.95rem;
+  }
 }
