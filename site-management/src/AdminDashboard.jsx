@@ -11,7 +11,7 @@ const mockStocks = [
 ];
 
 const mockRequisitions = [
-  { id: 'req1', item: 'Cement', quantity: 20, status: 'pending', project: 'Building A', requestDate: '2025-08-15', unitCost: 50 },
+  { id: 'req1', item: 'Cement', quantity: 20, status: 'fulfilled', project: 'Building A', requestDate: '2025-08-15', unitCost: 50 },
   { id: 'req2', item: 'Bricks', quantity: 200, status: 'approved', project: 'Building B', requestDate: '2025-08-14', unitCost: 2 },
   { id: 'req3', item: 'Steel Rods', quantity: 10, status: 'fulfilled', project: 'Building A', requestDate: '2025-08-13', unitCost: 120 },
   { id: 'req4', item: 'Paint', quantity: 5, status: 'pending', project: 'Building C', requestDate: '2025-08-16', unitCost: 25 },
@@ -31,10 +31,10 @@ const mockUsers = [
   { id: 'user4', name: 'Mary Poppins', email: 'mary.poppins@example.com', role: 'Regular Staff' },
 ];
 
-export default function CleanAdminDashboard() {
+export default function CleanAdminDashboard({ projects, addProject, deleteProject }) {
   const [stocks, setStocks] = useState(mockStocks);
   const [requisitions, setRequisitions] = useState(mockRequisitions);
-  const [projects, setProjects] = useState(mockProjects);
+  
   const [users, setUsers] = useState(mockUsers);
   const [filteredRequisitions, setFilteredRequisitions] = useState(mockRequisitions);
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,8 +53,9 @@ export default function CleanAdminDashboard() {
   const [editingProject, setEditingProject] = useState(null);
   const [isAddProjectFormVisible, setIsAddProjectFormVisible] = useState(false);
   const [selectedProjectForAnalysis, setSelectedProjectForAnalysis] = useState(null);
+  const [showProjectDetailsFor, setShowProjectDetailsFor] = useState(null);
   const [selectedNotification, setSelectedNotification] = useState(null);
-  const [selectedDashboardCard, setSelectedDashboardCard] = useState(null);
+  
 
   // Filter requisitions based on search query
   useEffect(() => {
@@ -69,7 +70,7 @@ export default function CleanAdminDashboard() {
   // Calculate project costs
   const calculateProjectCost = (projectName) => {
     return requisitions
-      .filter(req => req.project === projectName && req.status === 'fulfilled')
+      .filter(req => req.project === projectName)
       .reduce((total, req) => total + (req.quantity * req.unitCost), 0);
   };
 
@@ -126,19 +127,13 @@ export default function CleanAdminDashboard() {
 
   const handleAddNewProject = (e) => {
     e.preventDefault();
-    const newProject = {
-      id: `proj${projects.length + 1}`,
-      ...newProjectData,
-      budget: parseFloat(newProjectData.budget),
-      status: 'pending',
-    };
-    setProjects([...projects, newProject]);
+    addProject(newProjectData);
     setNewProjectData({ name: '', budget: '', startDate: '', expectedCompletionDate: '' });
     setIsAddProjectFormVisible(false);
   };
 
   const handleDeleteProject = (projectId) => {
-    setProjects(projects.filter(p => p.id !== projectId));
+    deleteProject(projectId);
   };
 
   const handleUpdateProject = (e) => {
@@ -248,167 +243,43 @@ export default function CleanAdminDashboard() {
   };
 
   const renderDashboard = () => {
-    if (selectedDashboardCard) {
-      return renderDashboardCardDetails(selectedDashboardCard);
-    }
-
     return (
       <div className="dashboard-content">
         <div className="summary-cards">
-          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('total-stock')}>
-            <div className="summary-icon">
-              <FaBox />
+          {projects.map(project => (
+            <div className="summary-card clickable" key={project.id} onClick={() => setShowProjectDetailsFor(showProjectDetailsFor === project.id ? null : project.id)}>
+              <h3>{project.name}</h3>
+              <div className="pie-chart-container">
+                <div className="pie-chart" style={{ background: `conic-gradient(#4caf50 ${(calculateProjectCost(project.name) / project.budget) * 100}%, #f44336 0)` }}></div>
+                <div className="legend">
+                  <div><span className="legend-color" style={{ backgroundColor: '#4caf50' }}></span> Spent</div>
+                  <div><span className="legend-color" style={{ backgroundColor: '#f44336' }}></span> Remaining</div>
+                </div>
+              </div>
+              {showProjectDetailsFor === project.id && (
+                <div className="project-metrics">
+                  <div className="metric">
+                    <span className="metric-label">Budget:</span>
+                    <span className="metric-value">${project.budget.toLocaleString()}</span>
+                  </div>
+                  <div className="metric">
+                    <span className="metric-label">Spent:</span>
+                    <span className="metric-value">${calculateProjectCost(project.name).toLocaleString()}</span>
+                  </div>
+                  <div className="metric">
+                    <span className="metric-label">Remaining:</span>
+                    <span className="metric-value">${(project.budget - calculateProjectCost(project.name)).toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="summary-content">
-              <h4>Total Stock Value</h4>
-              <p className="summary-value">${calculateTotalStockValue().toLocaleString()}</p>
-            </div>
-          </div>
-          
-          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('requisitions')}>
-            <div className="summary-icon">
-              <FaClipboardList />
-            </div>
-            <div className="summary-content">
-              <h4>Requisitions</h4>
-              <p className="summary-value">{requisitions.filter(req => req.status === 'pending').length} Pending</p>
-            </div>
-          </div>
-
-          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('low-alerts')}>
-            <div className="summary-icon">
-              <FaBell />
-            </div>
-            <div className="summary-content">
-              <h4>Low Stock Alerts</h4>
-              <p className="summary-value">{stocks.filter(stock => stock.quantity < 20).length}</p>
-            </div>
-          </div>
-          
-          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('active-projects')}>
-            <div className="summary-icon">
-              <FaDollarSign />
-            </div>
-            <div className="summary-content">
-              <h4>Active Projects</h4>
-              <p className="summary-value">{projects.filter(p => p.status === 'active').length}</p>
-            </div>
-          </div>
-
-          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('total-users')}>
-            <div className="summary-icon">
-              <FaUsers />
-            </div>
-            <div className="summary-content">
-              <h4>Total Users</h4>
-              <p className="summary-value">{users.length}</p>
-            </div>
-          </div>
-
-          <div className="summary-card clickable" onClick={() => setSelectedDashboardCard('pending-projects')}>
-            <div className="summary-icon">
-              <FaProjectDiagram />
-            </div>
-            <div className="summary-content">
-              <h4>Pending Projects</h4>
-              <p className="summary-value">{projects.filter(p => p.status === 'pending').length}</p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     );
   };
 
-  const renderDashboardCardDetails = (cardType) => {
-    let title = '';
-    let data = [];
-    let columns = [];
-    let columnMapping = {};
-
-    switch (cardType) {
-      case 'total-stock':
-        title = 'Stock Details';
-        columns = ['Item', 'Quantity', 'Unit Cost', 'Total Value', 'Supplier'];
-        columnMapping = { 'Item': 'name', 'Quantity': 'quantity', 'Unit Cost': 'unitCost', 'Total Value': 'totalValue', 'Supplier': 'supplier' };
-        data = stocks.map(stock => ({...stock, totalValue: stock.quantity * stock.unitCost}));
-        break;
-      case 'requisitions':
-        title = 'Requisitions';
-        columns = ['Item', 'Quantity', 'Project', 'Date', 'Status', 'Change Status'];
-        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Project': 'project', 'Date': 'requestDate', 'Status': 'status' };
-        data = requisitions;
-        break;
-      case 'low-alerts':
-        title = 'Low Stock Alerts';
-        columns = ['Item', 'Quantity', 'Supplier'];
-        columnMapping = { 'Item': 'name', 'Quantity': 'quantity', 'Supplier': 'supplier' };
-        data = stocks.filter(stock => stock.quantity < 20);
-        break;
-      case 'active-projects':
-        title = 'Active Projects';
-        columns = ['Name', 'Budget', 'Start Date', 'Expected Completion Date'];
-        columnMapping = { 'Name': 'name', 'Budget': 'budget', 'Start Date': 'startDate', 'Expected Completion Date': 'expectedCompletionDate' };
-        data = projects.filter(p => p.status === 'active');
-        break;
-      case 'total-users':
-        title = 'All Users';
-        columns = ['Name', 'Email', 'Role'];
-        columnMapping = { 'Name': 'name', 'Email': 'email', 'Role': 'role' };
-        data = users;
-        break;
-      case 'pending-projects':
-        title = 'Pending Projects';
-        columns = ['Name', 'Budget', 'Start Date', 'Expected Completion Date'];
-        columnMapping = { 'Name': 'name', 'Budget': 'budget', 'Start Date': 'startDate', 'Expected Completion Date': 'expectedCompletionDate' };
-        data = projects.filter(p => p.status === 'pending');
-        break;
-      default:
-        break;
-    }
-
-    return (
-      <div className="card">
-        <div className="card-header">
-          <h3>{title}</h3>
-          <button className="btn btn-danger" onClick={() => setSelectedDashboardCard(null)}>Close</button>
-        </div>
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                {columns.map(col => <th key={col}>{col}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((item, index) => (
-                <tr key={index}>
-                  {columns.map(col => {
-                    if (col === 'Change Status') {
-                      return (
-                        <td key={col}>
-                          <select
-                            value={item.status}
-                            onChange={(e) => handleUpdateStatus(item.id, e.target.value)}
-                            className="form-grid-select"
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
-                            <option value="fulfilled">Fulfilled</option>
-                          </select>
-                        </td>
-                      );
-                    }
-                    return <td key={col}>{item[columnMapping[col]]}</td>
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
+  
 
   const renderProjectManagement = () => (
     <div className="section-content">
@@ -503,65 +374,7 @@ export default function CleanAdminDashboard() {
     </div>
   );
 
-  const renderCostAnalysis = (project) => {
-    const spent = calculateProjectCost(project.name);
-    const progress = getProjectProgress(project.name);
-    const projectRequisitions = requisitions.filter(r => r.project === project.name);
-
-    return (
-      <div className="card">
-        <div className="card-header">
-          <h3>Cost Analysis for {project.name}</h3>
-          <button className="btn btn-danger" onClick={() => setSelectedProjectForAnalysis(null)}>Close</button>
-        </div>
-        <div className="project-metrics">
-          <div className="metric">
-            <span className="metric-label">Budget:</span>
-            <span className="metric-value">${project.budget.toLocaleString()}</span>
-          </div>
-          <div className="metric">
-            <span className="metric-label">Spent:</span>
-            <span className="metric-value">${spent.toLocaleString()}</span>
-          </div>
-          <div className="metric">
-            <span className="metric-label">Remaining:</span>
-            <span className="metric-value">${(project.budget - spent).toLocaleString()}</span>
-          </div>
-          <div className="metric">
-            <span className="metric-label">Progress:</span>
-            <span className="metric-value">{progress.toFixed(1)}%</span>
-          </div>
-        </div>
-        <h4>Requisitions for this Project</h4>
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Quantity</th>
-                <th>Cost</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projectRequisitions.map(req => (
-                <tr key={req.id}>
-                  <td>{req.item}</td>
-                  <td>{req.quantity}</td>
-                  <td>${(req.quantity * req.unitCost).toLocaleString()}</td>
-                  <td>
-                    <span className={`status-badge status-${req.status}`}>
-                      {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
+  
 
   const renderUsers = () => (
     <div className="section-content">
@@ -1162,6 +975,8 @@ export default function CleanAdminDashboard() {
           list-style: none;
           padding: 0;
           margin: 0;
+          display: flex;
+          flex-direction: column;
         }
 
         .sidebar-nav li {
@@ -1290,6 +1105,7 @@ export default function CleanAdminDashboard() {
           border-radius: 8px;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
           display: flex;
+          flex-direction: column;
           align-items: center;
           gap: 20px;
         }
@@ -1549,6 +1365,8 @@ export default function CleanAdminDashboard() {
           margin-bottom: 20px;
           padding-bottom: 20px;
           border-bottom: 1px solid #e0e0e0;
+          width: 100%;
+          justify-content: space-around;
         }
 
         .metric {
@@ -1579,6 +1397,51 @@ export default function CleanAdminDashboard() {
           background-color: #4caf50;
           height: 100%;
           transition: width 0.3s ease;
+        }
+
+        .chart-container {
+          margin-top: 20px;
+        }
+
+        .chart-bar-container {
+          display: flex;
+          margin-bottom: 10px;
+        }
+
+        .chart-bar {
+          height: 30px;
+          line-height: 30px;
+          color: white;
+          padding-left: 10px;
+          border-radius: 5px;
+        }
+
+        .chart-label {
+          font-weight: bold;
+        }
+
+        .pie-chart-container {
+          display: flex;
+          align-items: center;
+          margin-top: 20px;
+        }
+
+        .pie-chart {
+          width: 150px;
+          height: 150px;
+          border-radius: 50%;
+        }
+
+        .legend {
+          margin-left: 20px;
+        }
+
+        .legend-color {
+          display: inline-block;
+          width: 20px;
+          height: 20px;
+          margin-right: 10px;
+          vertical-align: middle;
         }
       `}</style>
 

@@ -2,19 +2,30 @@ import React, { useState } from 'react';
 import { FaBox, FaClipboardList, FaHome, FaSignOutAlt, FaBars, FaSearch, FaTimes, FaBell, FaFileAlt, FaPlus, FaExchangeAlt } from 'react-icons/fa';
 
 const mockStocks = [
-  { id: 'stock1', name: 'Cement', quantity: 100, unitCost: 50, supplier: 'BuildCorp' },
-  { id: 'stock2', name: 'Steel Rods', quantity: 10, unitCost: 120, supplier: 'MetalWorks' },
-  { id: 'stock3', name: 'Bricks', quantity: 1000, unitCost: 2, supplier: 'BrickMasters' },
-  { id: 'stock4', name: 'Paint', quantity: 5, unitCost: 25, supplier: 'ColorPlus' },
-  { id: 'stock5', name: 'Tiles', quantity: 200, unitCost: 15, supplier: 'TilePro' }
+  { id: 'stock1', name: 'Cement', category: 'Construction', quantity: 100, unitCost: 50, supplier: 'BuildCorp' },
+  { id: 'stock2', name: 'Steel Rods', category: 'Construction', quantity: 10, unitCost: 120, supplier: 'MetalWorks' },
+  { id: 'stock3', name: 'Bricks', category: 'Construction', quantity: 1000, unitCost: 2, supplier: 'BrickMasters' },
+  { id: 'stock4', name: 'Paint', category: 'Finishing', quantity: 5, unitCost: 25, supplier: 'ColorPlus' },
+  { id: 'stock5', name: 'Tiles', category: 'Finishing', quantity: 200, unitCost: 15, supplier: 'TilePro' },
+  { id: 'stock6', name: 'Electrical Wire', category: 'Electrical', quantity: 500, unitCost: 10, supplier: 'ElectroSupply' },
+  { id: 'stock7', name: 'Plumbing Pipes', category: 'Plumbing', quantity: 300, unitCost: 8, supplier: 'AquaFlow' }
 ];
 
+const mockCategories = [
+  'Construction',
+  'Finishing',
+  'Electrical',
+  'Plumbing'
+];
+
+
+
 const mockRequisitions = [
-  { id: 'req1', item: 'Cement', quantity: 20, status: 'approved', project: 'Building A', requestDate: '2025-08-15', unitCost: 50 },
-  { id: 'req2', item: 'Bricks', quantity: 200, status: 'approved', project: 'Building B', requestDate: '2025-08-14', unitCost: 2 },
-  { id: 'req3', item: 'Steel Rods', quantity: 10, status: 'pending', project: 'Building A', requestDate: '2025-08-13', unitCost: 120 },
-  { id: 'req4', item: 'Paint', quantity: 5, status: 'approved', project: 'Building C', requestDate: '2025-08-16', unitCost: 25 },
-  { id: 'req5', item: 'Tiles', quantity: 50, status: 'pending', project: 'Building B', requestDate: '2025-08-12', unitCost: 15 }
+  { id: 'req1', name: 'John Doe', items: 'Cement', quantity: 20, status: 'approved', projectName: 'Building A', category: 'Construction', reasonForRequest: 'New construction phase', date: '2025-08-15', unitCost: 50 },
+  { id: 'req2', name: 'Jane Smith', items: 'Bricks', quantity: 200, status: 'approved', projectName: 'Building B', category: 'Construction', reasonForRequest: 'Wall repair', date: '2025-08-14', unitCost: 2 },
+  { id: 'req3', name: 'John Doe', items: 'Steel Rods', quantity: 10, status: 'pending', projectName: 'Building A', category: 'Construction', reasonForRequest: 'Foundation work', date: '2025-08-13', unitCost: 120 },
+  { id: 'req4', name: 'Jane Smith', items: 'Paint', quantity: 5, status: 'approved', projectName: 'Building C', category: 'Finishing', reasonForRequest: 'Interior painting', date: '2025-08-16', unitCost: 25 },
+  { id: 'req5', name: 'Peter Jones', items: 'Tiles', quantity: 50, status: 'pending', projectName: 'Building B', category: 'Finishing', reasonForRequest: 'Bathroom renovation', date: '2025-08-12', unitCost: 15 }
 ];
 
 const mockDeliveries = [
@@ -23,7 +34,9 @@ const mockDeliveries = [
     { id: 'del3', item: 'Bricks', quantity: 500, date: '2025-08-17'},
 ];
 
-export default function StockClerkDashboard() {
+import RequisitionForm from './RequisitionForm';
+
+export default function UserDashboard({ projects }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [stocks, setStocks] = useState(mockStocks);
@@ -42,18 +55,31 @@ export default function StockClerkDashboard() {
   const [newStock, setNewStock] = useState({ id: '', name: '', quantity: 0, unitCost: 0, supplier: '' });
   const [issueDetails, setIssueDetails] = useState({ quantity: 0, issuedTo: '' });
   const [newDelivery, setNewDelivery] = useState({ item: '', quantity: 0, supplier: '' });
-  const [damagedStockDetails, setDamagedStockDetails] = useState({ item: '', quantity: 0, reason: '' });
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestingItem, setRequestingItem] = useState(null);
+
+  const handleRequestItem = (item) => {
+    setRequestingItem(item);
+    setShowRequestModal(true);
+  };
 
   const handleLogout = () => {
     console.log('Stock Clerk logged out');
     // Add logout logic here
   };
 
-  const handleUpdateRequisitionStatus = (id, newStatus) => {
-    const updatedReqs = requisitions.map(req =>
-      req.id === id ? { ...req, status: newStatus } : req
-    );
-    setRequisitions(updatedReqs);
+  const handleAddRequisition = (newRequisition) => {
+    const id = `req${requisitions.length + 1}`;
+    const date = new Date().toISOString().slice(0, 10);
+
+    setRequisitions([...requisitions, {
+      ...newRequisition,
+      id,
+      date,
+      status: 'pending',
+    }]);
+
+    setShowRequisitionForm(false);
   };
 
   const handleAddStockSubmit = (e) => {
@@ -99,14 +125,10 @@ export default function StockClerkDashboard() {
     setShowIssueStockModal(false);
   };
 
-  const handleAddDeliverySubmit = (e) => {
-    e.preventDefault();
-    const id = `del${deliveries.length + 1}`;
-    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    setDeliveries([...deliveries, { ...newDelivery, id, date }]);
-    setNewDelivery({ item: '', quantity: 0, supplier: '' }); // Clear form
-    setActiveAction(null); // Go back to quick actions menu
-  };
+  
+  const [showRequisitionForm, setShowRequisitionForm] = useState(false);
+
+  
 
   const handleUpdateDamagedReturnedStockSubmit = (e) => {
     e.preventDefault();
@@ -181,20 +203,29 @@ export default function StockClerkDashboard() {
               <p className="summary-value">{stocks.length} Items</p>
             </div>
           </div>
-          <div className="summary-card clickable" onClick={() => setSelectedCard('low-stock-alerts')}>
-            <div className="summary-icon"><FaBell /></div>
-            <div className="summary-content">
-              <h4>Low Stock Alerts</h4>
-              <p className="summary-value">{stocks.filter(stock => stock.quantity < 20).length}</p>
-            </div>
-          </div>
-          <div className="summary-card clickable" onClick={() => setSelectedCard('recent-deliveries')}>
+          
+          <div className="summary-card clickable" onClick={() => setSelectedCard('pending-requisitions')}>
             <div className="summary-icon"><FaClipboardList /></div>
             <div className="summary-content">
-              <h4>Recently Received Deliveries</h4>
-              <p className="summary-value">{deliveries.length}</p>
+              <h4>Pending Requisitions</h4>
+              <p className="summary-value">{requisitions.filter(req => req.status === 'pending').length}</p>
             </div>
           </div>
+          <div className="summary-card clickable" onClick={() => setSelectedCard('approved-requisitions')}>
+            <div className="summary-icon"><FaClipboardList /></div>
+            <div className="summary-content">
+              <h4>Approved Requisitions</h4>
+              <p className="summary-value">{requisitions.filter(req => req.status === 'approved').length}</p>
+            </div>
+          </div>
+          <div className="summary-card clickable" onClick={() => setSelectedCard('declined-requisitions')}>
+            <div className="summary-icon"><FaClipboardList /></div>
+            <div className="summary-content">
+              <h4>Declined Requisitions</h4>
+              <p className="summary-value">{requisitions.filter(req => req.status === 'declined').length}</p>
+            </div>
+          </div>
+          
         </div>
       </div>
     );
@@ -213,17 +244,23 @@ export default function StockClerkDashboard() {
         columnMapping = { 'Item': 'name', 'Quantity': 'quantity', 'Status': 'status' };
         data = stocks.map(s => ({...s, status: s.quantity < 20 ? 'Low Stock' : 'Normal'}));
         break;
-      case 'low-stock-alerts':
-        title = 'Low Stock Alerts';
-        columns = ['Item', 'Quantity'];
-        columnMapping = { 'Item': 'name', 'Quantity': 'quantity' };
-        data = stocks.filter(stock => stock.quantity < 20);
+      case 'approved-requisitions':
+        title = 'Approved Requisitions';
+        columns = ['Item', 'Quantity', 'Project', 'Date'];
+        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Project': 'project', 'Date': 'requestDate' };
+        data = requisitions.filter(req => req.status === 'approved');
         break;
-      case 'recent-deliveries':
-        title = 'Recently Received Deliveries';
-        columns = ['Item', 'Quantity', 'Date'];
-        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Date': 'date' };
-        data = deliveries;
+      case 'declined-requisitions':
+        title = 'Declined Requisitions';
+        columns = ['Item', 'Quantity', 'Project', 'Date'];
+        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Project': 'project', 'Date': 'requestDate' };
+        data = requisitions.filter(req => req.status === 'declined');
+        break;
+      case 'pending-requisitions':
+        title = 'Pending Requisitions';
+        columns = ['Item', 'Quantity', 'Project', 'Date'];
+        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Project': 'project', 'Date': 'requestDate' };
+        data = requisitions.filter(req => req.status === 'pending');
         break;
       default:
         break;
@@ -268,48 +305,48 @@ export default function StockClerkDashboard() {
 
   const renderRequisitions = () => (
     <div className="section-content">
-      <div className="card">
-        <h3>All Requisitions</h3>
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Quantity</th>
-                <th>Project</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Change Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requisitions.map(req => (
-                <tr key={req.id}>
-                  <td>{req.item}</td>
-                  <td>{req.quantity}</td>
-                  <td>{req.project}</td>
-                  <td>{req.requestDate}</td>
-                  <td>
-                    <span className={`status-badge status-${req.status}`}>
-                      {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
-                    </span>
-                  </td>
-                  <td>
-                    <select
-                      value={req.status}
-                      onChange={(e) => handleUpdateRequisitionStatus(req.id, e.target.value)}
-                      className="form-grid-select"
-                    >
-                      <option value="fulfilled">Fulfilled</option>
-                      <option value="not-fulfilled">Not Fulfilled</option>
-                    </select>
-                  </td>
+      {showRequisitionForm ? (
+        <RequisitionForm onClose={() => setShowRequisitionForm(false)} onSubmit={handleAddRequisition} projects={projects} />
+      ) : (
+        <div className="card">
+          <h3>All Requisitions</h3>
+          <button className="btn btn-primary" onClick={() => setShowRequisitionForm(true)} style={{ marginBottom: '20px' }}>Create New Requisition</button>
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Item</th>
+                  <th>Quantity</th>
+                  <th>Project Name</th>
+                  <th>Category</th>
+                  <th>Reason for Request</th>
+                  <th>Date</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {requisitions.map(req => (
+                  <tr key={req.id}>
+                    <td>{req.name}</td>
+                    <td>{req.items}</td>
+                    <td>{req.quantity}</td>
+                    <td>{req.projectName}</td>
+                    <td>{req.category}</td>
+                    <td>{req.reasonForRequest}</td>
+                    <td>{req.date}</td>
+                    <td>
+                      <span className={`status-badge status-${req.status}`}>
+                        {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 
@@ -340,9 +377,7 @@ export default function StockClerkDashboard() {
       <div className="section-content">
         <div className="card">
           <h3>Stock Management</h3>
-          <div className="stock-actions" style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-            <button className="btn btn-primary" onClick={handleAddStock}>Add New Stock</button>
-          </div>
+          
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -351,7 +386,7 @@ export default function StockClerkDashboard() {
                   <th>Quantity</th>
                   <th>Unit Cost</th>
                   <th>Supplier</th>
-                  <th>Actions</th>
+                  <th>Request</th>
                 </tr>
               </thead>
               <tbody>
@@ -362,9 +397,7 @@ export default function StockClerkDashboard() {
                     <td>${stock.unitCost.toFixed(2)}</td>
                     <td>{stock.supplier}</td>
                     <td>
-                      <button className="btn btn-sm btn-info" onClick={() => handleEditStock(stock)}>Edit</button>
-                      <button className="btn btn-sm btn-warning" onClick={() => handleIssueStock(stock)} style={{ marginLeft: '5px' }}>Issue</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDeleteStock(stock.id)} style={{ marginLeft: '5px' }}>Delete</button>
+                      <button className="btn btn-primary btn-sm" onClick={() => handleRequestItem(stock)}>Request</button>
                     </td>
                   </tr>
                 ))}
@@ -384,10 +417,7 @@ export default function StockClerkDashboard() {
         return renderStockManagement();
       case 'requisitions':
         return renderRequisitions();
-      case 'reports':
-        return renderReports();
-      case 'quick-actions':
-        return renderQuickActions();
+      
       default:
         return renderDashboard();
     }
@@ -547,7 +577,7 @@ export default function StockClerkDashboard() {
 
   return (
     <div className={`dashboard-container ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
-       <style jsx>{`
+       <style>{`
         /* General Body and Layout */
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
@@ -615,18 +645,20 @@ export default function StockClerkDashboard() {
           padding: 0;
           margin: 0;
           display: flex;
-          flex-direction: column; /* Arrange items top-to-bottom */
+          flex-direction: column;
         }
 
         .sidebar-nav li {
           padding: 15px 20px;
           cursor: pointer;
           display: flex;
-          flex-direction: row; /* Arrange items top-to-bottom */
-          align-items: center; /* Center items horizontally */
+          align-items: center;
+          gap: 15px;
           font-size: 1.1rem;
-          gap:5px;
           transition: background-color 0.2s ease, color 0.2s ease;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .sidebar-nav li:hover,
@@ -638,12 +670,6 @@ export default function StockClerkDashboard() {
         .sidebar-nav li svg {
           font-size: 1.2rem;
           min-width: 24px;
-          display: block; /* Ensure icon takes its own line */
-          margin-bottom: 5px; /* Add some space below the icon */
-        }
-
-        .sidebar-nav li span {
-          display: block; /* Ensure text takes its own line */
         }
 
         .sidebar-collapsed .sidebar-header h2,
@@ -856,7 +882,6 @@ export default function StockClerkDashboard() {
 
         .quick-action-buttons {
           display: flex;
-          flex-direction: column; /* Arrange buttons top-to-bottom */
           gap: 10px;
           margin-top: 20px;
         }
@@ -1023,12 +1048,7 @@ export default function StockClerkDashboard() {
             <li className={activeSection === 'requisitions' ? 'active' : ''} onClick={() => setActiveSection('requisitions')}>
               <FaClipboardList /> {isSidebarOpen && <span>Requisitions</span>}
             </li>
-            <li className={activeSection === 'reports' ? 'active' : ''} onClick={() => setActiveSection('reports')}>
-              <FaFileAlt /> {isSidebarOpen && <span>Reports</span>}
-            </li>
-            <li className={activeSection === 'quick-actions' ? 'active' : ''} onClick={() => {setActiveSection('quick-actions'); setActiveAction(null);}}>
-              <FaExchangeAlt /> {isSidebarOpen && <span>Quick Actions</span>}
-            </li>
+            
             <li onClick={handleLogout}>
               <FaSignOutAlt /> {isSidebarOpen && <span>Logout</span>}
             </li>
@@ -1126,6 +1146,29 @@ export default function StockClerkDashboard() {
           </div>
         </div>
       )}
+
+      {/* Request Item Modal */}
+      {showRequestModal && requestingItem && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Request: {requestingItem.name}</h3>
+            <form onSubmit={handleAddRequisitionSubmit} className="form-grid">
+              <label>Quantity:</label>
+              <input type="number" value={newRequisitionQuantity} onChange={(e) => setNewRequisitionQuantity(parseInt(e.target.value))} required />
+
+              <label>Project:</label>
+              <input type="text" value={newRequisitionProject} onChange={(e) => setNewRequisitionProject(e.target.value)} required />
+
+              <div className="modal-actions">
+                <button type="submit" className="btn btn-primary">Submit Request</button>
+                <button type="button" className="btn btn-danger" onClick={() => setShowRequestModal(false)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      
 
     </div>
   );
