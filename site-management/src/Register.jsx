@@ -1,17 +1,18 @@
-
 import React, { useState } from 'react';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import app from './firebase';
+import { Link, useNavigate } from 'react-router-dom';
+import { app } from './firebase';
 
 export default function Register() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword) {
       setError('Please fill all fields.');
       return;
     }
@@ -19,12 +20,20 @@ export default function Register() {
       setError('Passwords do not match.');
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password should be at least 6 characters long.');
+      return;
+    }
     setError('');
     const auth = getAuth(app);
     try {
-      await createUserWithEmailAndPassword(auth, username, password);
-      alert('Registration successful!');
-      // TODO: Redirect to login or dashboard
+      await createUserWithEmailAndPassword(auth, email, password);
+      navigate('/');
     } catch (err) {
       setError(err.message);
     }
@@ -44,11 +53,11 @@ export default function Register() {
       </div>
       <form className="login-form" onSubmit={handleSubmit}>
         <label>
-          Username
+          Email
           <input
-            type="text"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
             required
             autoFocus
           />
@@ -74,7 +83,7 @@ export default function Register() {
         {error && <div className="error">{error}</div>}
         <button type="submit" className="login-btn">Register</button>
         <div className="register-link">
-          <a href="#" onClick={() => window.location.href = '/login'}>Already have an account? Login</a>
+          <Link to="/">Already have an account? Login</Link>
         </div>
       </form>
     </div>

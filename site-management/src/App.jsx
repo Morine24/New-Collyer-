@@ -1,6 +1,4 @@
-
-
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 
 import Login from './Login';
@@ -9,6 +7,7 @@ import AdminDashboard from './AdminDashboard';
 import StockClerkDashboard from './StockClerkDashboard';
 import UserDashboard from './UserDashboard';
 import ForemanDashboard from './ForemanDashboard';
+import ChangePassword from './ChangePassword';
 import './App.css';
 
 function App() {
@@ -30,8 +29,10 @@ function App() {
     <Router>
       <div>
         <Routes>
+          <Route path="/login" element={<Navigate to="/" />} />
           <Route path="/" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/admin" element={<AdminDashboard projects={projects} addProject={addProject} deleteProject={deleteProject} />} />
           <Route path="/stock-clerk" element={<StockClerkDashboard />} />
           <Route path="/user-dashboard" element={<UserDashboard projects={projects.map(p => p.name)} />} />

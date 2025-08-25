@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { getAuth, signOut } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 import { FaBox, FaClipboardList, FaHome, FaSignOutAlt, FaBars, FaSearch, FaTimes, FaBell, FaFileAlt, FaPlus, FaExchangeAlt } from 'react-icons/fa';
 
 const mockStocks = [
@@ -37,6 +39,7 @@ const mockDeliveries = [
 import RequisitionForm from './RequisitionForm';
 
 export default function UserDashboard({ projects }) {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [stocks, setStocks] = useState(mockStocks);
@@ -63,9 +66,16 @@ export default function UserDashboard({ projects }) {
     setShowRequestModal(true);
   };
 
-  const handleLogout = () => {
-    console.log('Stock Clerk logged out');
-    // Add logout logic here
+  const handleLogout = async () => {
+    try {
+      const auth = getAuth();
+      await signOut(auth);
+      console.log('User logged out successfully');
+      navigate('/'); // Redirect to login page
+    } catch (error) {
+      console.error('Error logging out:', error);
+      alert('Failed to log out. Please try again.');
+    }
   };
 
   const handleAddRequisition = (newRequisition) => {
@@ -1032,7 +1042,7 @@ export default function UserDashboard({ projects }) {
       `}</style>
       <aside className="sidebar">
         <div className="sidebar-header">
-          {isSidebarOpen && <h2>Stock Clerk</h2>}
+          {isSidebarOpen && <h2>User</h2>}
           <button className="toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <FaTimes />
           </button>

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { getAuth, signOut } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 import { FaBox, FaClipboardList, FaHome, FaSignOutAlt, FaBars, FaSearch, FaTimes, FaBell, FaFileAlt, FaPlus, FaExchangeAlt } from 'react-icons/fa';
 
 const mockStocks = [
@@ -24,10 +26,11 @@ const mockDeliveries = [
 ];
 
 export default function StockClerkDashboard() {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [stocks, setStocks] = useState(mockStocks);
-  const [requisitions, setRequisitions] = useState(mockRequisitions);
+  const [requisitions, setRequisitions] = useState(mockRequisitions.filter(r => r.status === 'approved'));
   const [deliveries, setDeliveries] = useState(mockDeliveries);
   const [issuedStock, setIssuedStock] = useState([]); // New state for issued stock
   const [damagedReturnedStock, setDamagedReturnedStock] = useState([]); // New state for damaged/returned stock
@@ -44,9 +47,16 @@ export default function StockClerkDashboard() {
   const [newDelivery, setNewDelivery] = useState({ item: '', quantity: 0, supplier: '' });
   const [damagedStockDetails, setDamagedStockDetails] = useState({ item: '', quantity: 0, reason: '' });
 
-  const handleLogout = () => {
-    console.log('Stock Clerk logged out');
-    // Add logout logic here
+  const handleLogout = async () => {
+    try {
+      const auth = getAuth();
+      await signOut(auth);
+      console.log('Stock Clerk logged out successfully');
+      navigate('/'); // Redirect to login page
+    } catch (error) {
+      console.error('Error logging out:', error);
+      alert('Failed to log out. Please try again.');
+    }
   };
 
   const handleUpdateRequisitionStatus = (id, newStatus) => {
@@ -300,6 +310,7 @@ export default function StockClerkDashboard() {
                       onChange={(e) => handleUpdateRequisitionStatus(req.id, e.target.value)}
                       className="form-grid-select"
                     >
+                      <option value="approved">Approved</option>
                       <option value="fulfilled">Fulfilled</option>
                       <option value="not-fulfilled">Not Fulfilled</option>
                     </select>
@@ -616,7 +627,7 @@ export default function StockClerkDashboard() {
           margin: 0;
           display: flex;
           flex-direction: column; /* Arrange items top-to-bottom */
-        }
+        } 
 
         .sidebar-nav li {
           padding: 15px 20px;

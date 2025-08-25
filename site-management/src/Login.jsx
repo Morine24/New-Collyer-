@@ -1,27 +1,61 @@
-
 import React, { useState } from 'react';
 import './Login.css';
 import '../node_modules/@fontsource/quicksand/index.css';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import app from './firebase';
+import { Link, useNavigate } from 'react-router-dom';
+import { app } from './firebase';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 
 export default function Login() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError('Please enter username and password.');
+    if (!email || !password) {
+      setError('Please enter email and password.');
       return;
     }
     setError('');
     const auth = getAuth(app);
+    const db = getFirestore(app);
     try {
-      await signInWithEmailAndPassword(auth, username, password);
-      alert('Login successful!');
-      // TODO: Redirect to dashboard or home page
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Fetch user data from Firestore
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const userRole = userData.role;
+        const mustChangePassword = userData.mustChangePassword; // Get from Firestore
+
+        if (mustChangePassword) {
+          navigate('/change-password');
+        } else {
+          switch (userRole) {
+            case 'Manager':
+              navigate('/admin');
+              break;
+            case 'Stock Clerk':
+              navigate('/stock-clerk');
+              break;
+            case 'Foreman':
+              navigate('/foreman-dashboard');
+              break;
+            default:
+              navigate('/user-dashboard');
+          }
+        }
+      } else {
+        // If user data not found in Firestore, but authenticated, redirect to a default page
+        // or handle as an error. For now, redirect to user-dashboard.
+        navigate('/user-dashboard');
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -41,11 +75,11 @@ export default function Login() {
       </div>
       <form className="login-form" onSubmit={handleSubmit}>
         <label>
-          Username
+          Email
           <input
-            type="text"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
             required
             autoFocus
           />
@@ -62,7 +96,7 @@ export default function Login() {
         {error && <div className="error">{error}</div>}
         <button type="submit" className="login-btn">Login</button>
         <div className="register-link">
-          <a href="#" onClick={() => window.location.href = '/register'}>Register</a>
+          <Link to="/register">Register</Link>
         </div>
       </form>
     </div>

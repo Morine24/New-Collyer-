@@ -1,4 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
+import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaBell, FaBox, FaClipboardList, FaDollarSign, FaDownload, FaHome, FaChartLine, FaBars, FaSearch, FaUsers, FaProjectDiagram, FaSignOutAlt } from 'react-icons/fa';
 
 // Enhanced mock data with costs and projects
@@ -24,18 +29,11 @@ const mockProjects = [
   { id: 'proj3', name: 'Building C', budget: 30000, startDate: '2025-08-10', expectedCompletionDate: '2025-12-10', status: 'pending' }
 ];
 
-const mockUsers = [
-  { id: 'user1', name: 'John Doe', email: 'john.doe@example.com', role: 'Manager' },
-  { id: 'user2', name: 'Jane Smith', email: 'jane.smith@example.com', role: 'Stock Clerk' },
-  { id: 'user3', name: 'Peter Jones', email: 'peter.jones@example.com', role: 'Foreman' },
-  { id: 'user4', name: 'Mary Poppins', email: 'mary.poppins@example.com', role: 'Regular Staff' },
-];
-
 export default function CleanAdminDashboard({ projects, addProject, deleteProject }) {
+  const navigate = useNavigate();
   const [stocks, setStocks] = useState(mockStocks);
   const [requisitions, setRequisitions] = useState(mockRequisitions);
-  
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState([]);
   const [filteredRequisitions, setFilteredRequisitions] = useState(mockRequisitions);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -55,7 +53,17 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
   const [selectedProjectForAnalysis, setSelectedProjectForAnalysis] = useState(null);
   const [showProjectDetailsFor, setShowProjectDetailsFor] = useState(null);
   const [selectedNotification, setSelectedNotification] = useState(null);
-  
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const usersCollection = collection(db, 'users');
+      const userSnapshot = await getDocs(usersCollection);
+      const userList = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUsers(userList);
+    };
+
+    fetchUsers();
+  }, []);
 
   // Filter requisitions based on search query
   useEffect(() => {
@@ -145,17 +153,36 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
     setEditingProject(null);
   };
 
-  const handleAddNewUser = (e) => {
+  const handleAddNewUser = async (e) => {
     e.preventDefault();
-    const newUser = {
-      id: `user${users.length + 1}`,
-      name: e.target.name.value,
-      email: e.target.email.value,
-      role: e.target.role.value,
-    };
-    setUsers([...users, newUser]);
-    e.target.reset();
-    setIsAddUserFormVisible(false);
+    const name = e.target.name.value;
+    const email = e.target.email.value;
+    const role = e.target.role.value;
+    const password = 'password'; // Default password
+
+    try {
+      const auth = getAuth();
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      console.log('User created:', userCredential.user);
+      
+      // Save user data to Firestore
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        name,
+        email,
+        role,
+        mustChangePassword: true, // Set mustChangePassword in Firestore
+      });
+
+      const usersCollection = collection(db, 'users');
+      const userSnapshot = await getDocs(usersCollection);
+      const userList = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUsers(userList);
+      e.target.reset();
+      setIsAddUserFormVisible(false);
+    } catch (error) {
+      console.error("Error creating new user:", error);
+      alert("Failed to create new user. Please check the email and try again.");
+    }
   };
 
   const handleDeleteUser = (userId) => {
@@ -173,7 +200,7 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
 
   const handleLogout = () => {
     console.log('User logged out');
-    // Here you would typically clear user session, tokens, and redirect to login page
+    navigate('/');
   };
 
   // Generate report data
@@ -694,16 +721,17 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
                     </span>
                   </td>
                   <td>
-                    <select
-                      value={req.status}
-                      onChange={(e) => handleUpdateStatus(req.id, e.target.value)}
-                      className="form-grid-select"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="approved">Approved</option>
-                      <option value="rejected">Rejected</option>
-                      <option value="fulfilled">Fulfilled</option>
-                    </select>
+                    {req.status === 'pending' && (
+                      <select
+                        value={req.status}
+                        onChange={(e) => handleUpdateStatus(req.id, e.target.value)}
+                        className="form-grid-select"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    )}
                   </td>
                 </tr>
               ))}
