@@ -25,7 +25,7 @@ const mockDeliveries = [
     { id: 'del3', item: 'Bricks', quantity: 500, date: '2025-08-17'},
 ];
 
-export default function StockClerkDashboard() {
+export default function StockClerkDashboard({ currentUserData }) {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -1018,7 +1018,26 @@ export default function StockClerkDashboard() {
       `}</style>
       <aside className="sidebar">
         <div className="sidebar-header">
-          {isSidebarOpen && <h2>Stock Clerk</h2>}
+                    {isSidebarOpen && (
+            <>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                backgroundColor: '#FFD600', // Example color
+                marginRight: '3px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#1a237e', // Text color for inside the circle
+                fontWeight: 'bold',
+                fontSize: '0.8em'
+              }}>
+                {currentUserData ? currentUserData.name.charAt(0).toUpperCase() : 'S'}
+              </div>
+              <h2>{currentUserData ? currentUserData.name : 'Stock Clerk'}</h2>
+            </>
+          )}
           <button className="toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <FaTimes />
           </button>

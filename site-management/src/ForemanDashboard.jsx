@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './ForemanDashboard.css';
 
-const ForemanDashboard = () => {
+const ForemanDashboard = ({ currentUserData }) => {
   const [requests, setRequests] = useState([
     { id: 1, item: 'Cement', quantity: 10, status: 'Pending' },
     { id: 2, item: 'Sand', quantity: 5, status: 'Approved' },
@@ -53,7 +53,22 @@ const ForemanDashboard = () => {
 
   return (
     <div className="foreman-dashboard">
-      <h1>Foreman Dashboard</h1>
+      <div style={{
+        width: '24px',
+        height: '24px',
+        borderRadius: '50%',
+        backgroundColor: '#FFD600', // Example color
+        marginRight: '3px',
+        display: 'inline-flex', // Use inline-flex to keep it on the same line as h1
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#1a237e', // Text color for inside the circle
+        fontWeight: 'bold',
+        fontSize: '0.8em'
+      }}>
+        {currentUserData ? currentUserData.name.charAt(0).toUpperCase() : 'F'}
+      </div>
+      <h1>{currentUserData ? currentUserData.name : 'Foreman'} Dashboard</h1>
 
       {/* My Requests Section */}
       <section>

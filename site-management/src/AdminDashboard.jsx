@@ -29,7 +29,7 @@ const mockProjects = [
   { id: 'proj3', name: 'Building C', budget: 30000, startDate: '2025-08-10', expectedCompletionDate: '2025-12-10', status: 'pending' }
 ];
 
-export default function CleanAdminDashboard({ projects, addProject, deleteProject }) {
+export default function CleanAdminDashboard({ projects, addProject, deleteProject, currentUserData }) {
   const navigate = useNavigate();
   const [stocks, setStocks] = useState(mockStocks);
   const [requisitions, setRequisitions] = useState(mockRequisitions);
@@ -1475,7 +1475,26 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
 
       <aside className="sidebar">
         <div className="sidebar-header">
-          {isSidebarOpen && <h2>Admin Dashboard</h2>}
+                    {isSidebarOpen && (
+            <>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                backgroundColor: '#FFD600', // Example color
+                marginRight: '3px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#1a237e', // Text color for inside the circle
+                fontWeight: 'bold',
+                fontSize: '0.8em'
+              }}>
+                {currentUserData ? currentUserData.name.charAt(0).toUpperCase() : 'A'}
+              </div>
+              <h2>{currentUserData ? currentUserData.name : 'Admin'}</h2>
+            </>
+          )}
           <button className="toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <FaTimes />
           </button>

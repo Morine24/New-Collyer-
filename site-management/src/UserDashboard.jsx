@@ -38,7 +38,7 @@ const mockDeliveries = [
 
 import RequisitionForm from './RequisitionForm';
 
-export default function UserDashboard({ projects }) {
+export default function UserDashboard({ projects, currentUserData }) {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -1042,7 +1042,26 @@ export default function UserDashboard({ projects }) {
       `}</style>
       <aside className="sidebar">
         <div className="sidebar-header">
-          {isSidebarOpen && <h2>User</h2>}
+                    {isSidebarOpen && (
+            <>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                backgroundColor: '#FFD600', // Example color
+                marginRight: '3px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#1a237e', // Text color for inside the circle
+                fontWeight: 'bold',
+                fontSize: '0.8em'
+              }}>
+                {currentUserData ? currentUserData.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <h2>{currentUserData ? currentUserData.name : 'User'}</h2>
+            </>
+          )}
           <button className="toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <FaTimes />
           </button>
