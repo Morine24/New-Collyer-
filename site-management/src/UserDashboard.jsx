@@ -117,20 +117,6 @@ export default function UserDashboard({ projects, currentUserData, requisitions,
     }
   };
 
-  const handleAddRequisition = (newRequisition) => {
-    const id = `req${requisitions.length + 1}`;
-    const date = new Date().toISOString().slice(0, 10);
-
-    setRequisitions([...requisitions, {
-      ...newRequisition,
-      id,
-      date,
-      status: 'pending',
-    }]);
-
-    setShowRequisitionForm(false);
-  };
-
   const handleAddStockSubmit = (e) => {
     e.preventDefault();
     const id = `stock${stocks.length + 1}`;
@@ -355,7 +341,7 @@ export default function UserDashboard({ projects, currentUserData, requisitions,
   const renderRequisitions = () => (
     <div className="section-content">
       {showRequisitionForm ? (
-        <RequisitionForm onClose={() => setShowRequisitionForm(false)} onSubmit={handleAddRequisition} projects={projects} />
+        <RequisitionForm onClose={() => setShowRequisitionForm(false)} onSubmit={addRequisition} projects={projects} />
       ) : (
         <div className="card">
           <h3>All Requisitions</h3>
@@ -386,7 +372,7 @@ export default function UserDashboard({ projects, currentUserData, requisitions,
                     <td>{req.date}</td>
                     <td>
                       <span className={`status-badge status-${req.status}`}>
-                        {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                        {req.status ? (req.status.charAt(0).toUpperCase() + req.status.slice(1)) : ''}
                       </span>
                     </td>
                   </tr>
@@ -1230,7 +1216,12 @@ export default function UserDashboard({ projects, currentUserData, requisitions,
               <input type="number" value={newRequisitionQuantity} onChange={(e) => setNewRequisitionQuantity(parseInt(e.target.value))} required />
 
               <label>Project:</label>
-              <input type="text" value={newRequisitionProject} onChange={(e) => setNewRequisitionProject(e.target.value)} required />
+              <select value={newRequisitionProject} onChange={(e) => setNewRequisitionProject(e.target.value)} required>
+                <option value="">Select Project</option>
+                {projects.map(project => (
+                  <option key={project.id} value={project.name}>{project.name}</option>
+                ))}
+              </select>
 
               <div className="modal-actions">
                 <button type="submit" className="btn btn-primary">Submit Request</button>

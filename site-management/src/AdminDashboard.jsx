@@ -17,6 +17,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   const navigate = useNavigate();
   const [stocks, setStocks] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [laborCosts, setLaborCosts] = useState([]);
   
   const [users, setUsers] = useState([]);
   const [filteredRequisitions, setFilteredRequisitions] = useState([]);
@@ -38,6 +39,13 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   const [isAddUserFormVisible, setIsAddUserFormVisible] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [isAddProjectFormVisible, setIsAddProjectFormVisible] = useState(false);
+  const [newLaborData, setNewLaborData] = useState({
+    projectName: '',
+    description: '',
+    amount: '',
+    dateIncurred: '',
+  });
+  const [isAddLaborFormVisible, setIsAddLaborFormVisible] = useState(false);
   const [selectedProjectForAnalysis, setSelectedProjectForAnalysis] = useState(null);
   const [showProjectDetailsFor, setShowProjectDetailsFor] = useState(null);
   const [selectedNotification, setSelectedNotification] = useState(null);
@@ -75,6 +83,18 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     };
 
     fetchProjects();
+  }, []);
+
+  // New useEffect to fetch labor costs from Firestore
+  useEffect(() => {
+    const fetchLaborCosts = async () => {
+      const laborCostsCollection = collection(db, 'laborCosts');
+      const laborSnapshot = await getDocs(laborCostsCollection);
+      const laborList = laborSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setLaborCosts(laborList);
+    };
+
+    fetchLaborCosts();
   }, []);
 
   
@@ -116,11 +136,23 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
 
   }, [searchQuery, requisitions, users, stocks, projects]);
 
-  // Calculate project costs
-  const calculateProjectCost = (projectName) => {
+  // Calculate requisition costs for a project
+  const calculateRequisitionCost = (projectName) => {
     return requisitions
       .filter(req => req.project === projectName)
       .reduce((total, req) => total + (req.quantity * req.unitCost), 0);
+  };
+
+  // Calculate labor costs for a project
+  const calculateLaborCost = (projectName) => {
+    return laborCosts
+      .filter(lc => lc.projectName === projectName) // Assuming projectName is stored in laborCosts
+      .reduce((total, lc) => total + lc.amount, 0);
+  };
+
+  // Calculate total project cost (requisitions + labor)
+  const calculateProjectCost = (projectName) => {
+    return calculateRequisitionCost(projectName) + calculateLaborCost(projectName);
   };
 
   const calculateTotalStockValue = () => {
@@ -200,6 +232,30 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     } catch (error) {
       console.error("Error adding new project:", error);
       alert("Failed to add new project.");
+    }
+  };
+
+  const handleNewLaborChange = (e) => {
+    setNewLaborData({
+      ...newLaborData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleAddNewLabor = async (e) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, 'laborCosts'), { ...newLaborData, amount: parseFloat(newLaborData.amount) });
+      // Re-fetch labor costs to update the UI
+      const laborCostsCollection = collection(db, 'laborCosts');
+      const laborSnapshot = await getDocs(laborCostsCollection);
+      const laborList = laborSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setLaborCosts(laborList);
+      setNewLaborData({ projectName: '', description: '', amount: '', dateIncurred: '' });
+      setIsAddLaborFormVisible(false);
+    } catch (error) {
+      console.error("Error adding new labor cost:", error);
+      alert("Failed to add new labor cost.");
     }
   };
 
@@ -386,7 +442,15 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                     <span className="metric-value">Ksh{project.budget.toLocaleString()}</span>
                   </div>
                   <div className="metric">
-                    <span className="metric-label">Spent:</span>
+                    <span className="metric-label">Requisition Cost:</span>
+                    <span className="metric-value">Ksh{calculateRequisitionCost(project.name).toLocaleString()}</span>
+                  </div>
+                  <div className="metric">
+                    <span className="metric-label">Labor Cost:</span>
+                    <span className="metric-value">Ksh{calculateLaborCost(project.name).toLocaleString()}</span>
+                  </div>
+                  <div className="metric">
+                    <span className="metric-label">Total Spent:</span>
                     <span className="metric-value">Ksh{calculateProjectCost(project.name).toLocaleString()}</span>
                   </div>
                   <div className="metric">
@@ -410,6 +474,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
         <div className="card-header">
           <h3>Project Management</h3>
           <button className="btn btn-primary" onClick={() => setIsAddProjectFormVisible(true)}>Add Project</button>
+          <button className="btn btn-primary" onClick={() => setIsAddLaborFormVisible(true)}>Add Labor Cost</button>
         </div>
         <div className="table-container">
           <table className="data-table">
@@ -469,6 +534,27 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
             <div className="form-actions">
               <button type="submit" className="btn btn-primary">Add Project</button>
               <button type="button" className="btn btn-secondary" onClick={() => setIsAddProjectFormVisible(false)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {isAddLaborFormVisible && (
+        <div className="card">
+          <h3>Add New Labor Cost</h3>
+          <form onSubmit={handleAddNewLabor} className="form-grid">
+            <select name="projectName" value={newLaborData.projectName} onChange={handleNewLaborChange} required>
+              <option value="">Select Project</option>
+              {projects.map(project => (
+                <option key={project.id} value={project.name}>{project.name}</option>
+              ))}
+            </select>
+            <input type="text" name="description" placeholder="Description" value={newLaborData.description} onChange={handleNewLaborChange} required />
+            <input type="number" name="amount" placeholder="Amount" step="0.01" value={newLaborData.amount} onChange={handleNewLaborChange} required />
+            <input type="date" name="dateIncurred" placeholder="Date Incurred" value={newLaborData.dateIncurred} onChange={handleNewLaborChange} required />
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">Add Labor Cost</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsAddLaborFormVisible(false)}>Cancel</button>
             </div>
           </form>
         </div>

@@ -71,8 +71,8 @@ const RequisitionForm = ({ onClose, onSubmit, projects }) => {
           >
             <option value="">Select a project</option>
             {projects.map((project) => (
-              <option key={project} value={project}>
-                {project}
+              <option key={project.id} value={project.name}>
+                {project.name}
               </option>
             ))}
           </select>
