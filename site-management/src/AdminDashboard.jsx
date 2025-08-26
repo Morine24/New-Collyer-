@@ -1,40 +1,28 @@
 
 import React, { useEffect, useState } from 'react';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaBell, FaBox, FaClipboardList, FaDollarSign, FaDownload, FaHome, FaChartLine, FaBars, FaSearch, FaUsers, FaProjectDiagram, FaSignOutAlt } from 'react-icons/fa';
+import SearchBar from './SearchBar';
 
-// Enhanced mock data with costs and projects
-const mockStocks = [
-  { id: 'stock1', name: 'Cement', quantity: 100, unitCost: 50, supplier: 'BuildCorp' },
-  { id: 'stock2', name: 'Steel Rods', quantity: 50, unitCost: 120, supplier: 'MetalWorks' },
-  { id: 'stock3', name: 'Bricks', quantity: 1000, unitCost: 2, supplier: 'BrickMasters' },
-  { id: 'stock4', name: 'Paint', quantity: 30, unitCost: 25, supplier: 'ColorPlus' },
-  { id: 'stock5', name: 'Tiles', quantity: 200, unitCost: 15, supplier: 'TilePro' }
-];
 
-const mockRequisitions = [
-  { id: 'req1', item: 'Cement', quantity: 20, status: 'fulfilled', project: 'Building A', requestDate: '2025-08-15', unitCost: 50 },
-  { id: 'req2', item: 'Bricks', quantity: 200, status: 'approved', project: 'Building B', requestDate: '2025-08-14', unitCost: 2 },
-  { id: 'req3', item: 'Steel Rods', quantity: 10, status: 'fulfilled', project: 'Building A', requestDate: '2025-08-13', unitCost: 120 },
-  { id: 'req4', item: 'Paint', quantity: 5, status: 'pending', project: 'Building C', requestDate: '2025-08-16', unitCost: 25 },
-  { id: 'req5', item: 'Tiles', quantity: 50, status: 'fulfilled', project: 'Building B', requestDate: '2025-08-12', unitCost: 15 }
-];
 
-const mockProjects = [
-  { id: 'proj1', name: 'Building A', budget: 50000, startDate: '2025-08-01', expectedCompletionDate: '2026-02-01', status: 'active' },
-  { id: 'proj2', name: 'Building B', budget: 75000, startDate: '2025-08-05', expectedCompletionDate: '2026-08-05', status: 'active' },
-  { id: 'proj3', name: 'Building C', budget: 30000, startDate: '2025-08-10', expectedCompletionDate: '2025-12-10', status: 'pending' }
-];
 
-export default function CleanAdminDashboard({ projects, addProject, deleteProject, currentUserData }) {
+
+
+
+export default function CleanAdminDashboard({ currentUserData, requisitions, updateRequisitionStatus }) {
   const navigate = useNavigate();
-  const [stocks, setStocks] = useState(mockStocks);
-  const [requisitions, setRequisitions] = useState(mockRequisitions);
+  const [stocks, setStocks] = useState([]);
+  const [projects, setProjects] = useState([]);
+  
   const [users, setUsers] = useState([]);
-  const [filteredRequisitions, setFilteredRequisitions] = useState(mockRequisitions);
+  const [filteredRequisitions, setFilteredRequisitions] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [filteredStocks, setFilteredStocks] = useState([]);
+  const [filteredProjects, setFilteredProjects] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -65,15 +53,68 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
     fetchUsers();
   }, []);
 
+  // New useEffect to fetch stocks from Firestore
+  useEffect(() => {
+    const fetchStocks = async () => {
+      const stockCollection = collection(db, 'stockItems'); // New collection for stocks
+      const stockSnapshot = await getDocs(stockCollection);
+      const stockList = stockSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setStocks(stockList);
+    };
+
+    fetchStocks();
+  }, []);
+
+  // New useEffect to fetch projects from Firestore
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const projectsCollection = collection(db, 'projects');
+      const projectSnapshot = await getDocs(projectsCollection);
+      const projectList = projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProjects(projectList);
+    };
+
+    fetchProjects();
+  }, []);
+
+  
+
   // Filter requisitions based on search query
   useEffect(() => {
-    const filtered = requisitions.filter(req =>
-      req.item.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.project.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setFilteredRequisitions(filtered);
-  }, [searchQuery, requisitions]);
+    const search = searchQuery.toLowerCase();
+
+    const filteredReqs = requisitions.filter(req => {
+      const item = req.item ? req.item.toLowerCase() : '';
+      const status = req.status ? req.status.toLowerCase() : '';
+      const project = req.project ? req.project.toLowerCase() : '';
+      return item.includes(search) || status.includes(search) || project.includes(search);
+    });
+    setFilteredRequisitions(filteredReqs);
+
+    const filteredUsrs = users.filter(user => {
+      const name = user.name ? user.name.toLowerCase() : '';
+      const email = user.email ? user.email.toLowerCase() : '';
+      const role = user.role ? user.role.toLowerCase() : '';
+      return name.includes(search) || email.includes(search) || role.includes(search);
+    });
+    setFilteredUsers(filteredUsrs);
+
+    const filteredStks = stocks.filter(stock => {
+      const name = stock.name ? stock.name.toLowerCase() : '';
+      const supplier = stock.supplier ? stock.supplier.toLowerCase() : '';
+      const project = stock.project ? stock.project.toLowerCase() : '';
+      return name.includes(search) || supplier.includes(search) || project.includes(search);
+    });
+    setFilteredStocks(filteredStks);
+
+    const filteredProjs = projects.filter(project => {
+      const name = project.name ? project.name.toLowerCase() : '';
+      const status = project.status ? project.status.toLowerCase() : '';
+      return name.includes(search) || status.includes(search);
+    });
+    setFilteredProjects(filteredProjs);
+
+  }, [searchQuery, requisitions, users, stocks, projects]);
 
   // Calculate project costs
   const calculateProjectCost = (projectName) => {
@@ -94,10 +135,7 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
 
   // Handler for updating requisition status
   const handleUpdateStatus = async (id, newStatus) => {
-    const updatedReqs = requisitions.map(req =>
-      req.id === id ? { ...req, status: newStatus } : req
-    );
-    setRequisitions(updatedReqs);
+    updateRequisitionStatus(id, newStatus);
   };
 
   // Handler for fulfilling a requisition and updating stock
@@ -114,16 +152,31 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
       return;
     }
 
-    const updatedStocks = stocks.map(stock =>
-      stock.name === req.item ? { ...stock, quantity: newQuantity } : stock
-    );
-    
-    const updatedReqs = requisitions.map(r =>
-      r.id === req.id ? { ...r, status: 'fulfilled' } : r
-    );
+    try {
+      // Update stock quantity in Firestore
+      await updateDoc(doc(db, 'stockItems', stockItem.id), { quantity: newQuantity });
 
-    setStocks(updatedStocks);
-    setRequisitions(updatedReqs);
+      // Update requisition status in Firestore (assuming requisitions are also in Firestore)
+      // This part is commented out as requisitions are currently mock data.
+      // If requisitions are to be persisted, similar Firestore operations would be needed here.
+      // await updateDoc(doc(db, 'requisitions', req.id), { status: 'fulfilled' });
+
+      // Re-fetch stocks to update the UI
+      const stockCollection = collection(db, 'stockItems');
+      const stockSnapshot = await getDocs(stockCollection);
+      const stockList = stockSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setStocks(stockList);
+
+      // Update local requisitions state (since they are mock data)
+      const updatedReqs = requisitions.map(r =>
+        r.id === req.id ? { ...r, status: 'fulfilled' } : r
+      );
+      setRequisitions(updatedReqs);
+
+    } catch (error) {
+      console.error("Error fulfilling requisition or updating stock:", error);
+      alert("Failed to fulfill requisition or update stock.");
+    }
   };
 
   const handleNewProjectChange = (e) => {
@@ -133,24 +186,57 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
     });
   };
 
-  const handleAddNewProject = (e) => {
+  const handleAddNewProject = async (e) => {
     e.preventDefault();
-    addProject(newProjectData);
-    setNewProjectData({ name: '', budget: '', startDate: '', expectedCompletionDate: '' });
-    setIsAddProjectFormVisible(false);
+    try {
+      await addDoc(collection(db, 'projects'), { ...newProjectData, status: 'pending' }); // Add status as pending by default
+      // Re-fetch projects to update the UI
+      const projectsCollection = collection(db, 'projects');
+      const projectSnapshot = await getDocs(projectsCollection);
+      const projectList = projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProjects(projectList);
+      setNewProjectData({ name: '', budget: '', startDate: '', expectedCompletionDate: '' });
+      setIsAddProjectFormVisible(false);
+    } catch (error) {
+      console.error("Error adding new project:", error);
+      alert("Failed to add new project.");
+    }
   };
 
-  const handleDeleteProject = (projectId) => {
-    deleteProject(projectId);
+  const handleDeleteProject = async (projectId) => {
+    try {
+      await deleteDoc(doc(db, "projects", projectId));
+      // Re-fetch projects to update the UI
+      const projectsCollection = collection(db, 'projects');
+      const projectSnapshot = await getDocs(projectsCollection);
+      const projectList = projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProjects(projectList);
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      alert("Failed to delete project.");
+    }
   };
 
-  const handleUpdateProject = (e) => {
+  const handleUpdateProject = async (e) => {
     e.preventDefault();
-    const updatedProjects = projects.map(project =>
-      project.id === editingProject.id ? { ...editingProject } : project
-    );
-    setProjects(updatedProjects);
-    setEditingProject(null);
+    try {
+      await updateDoc(doc(db, "projects", editingProject.id), {
+        name: editingProject.name,
+        budget: editingProject.budget,
+        startDate: editingProject.startDate,
+        expectedCompletionDate: editingProject.expectedCompletionDate,
+        status: editingProject.status,
+      });
+      // Re-fetch projects to update the UI
+      const projectsCollection = collection(db, 'projects');
+      const projectSnapshot = await getDocs(projectsCollection);
+      const projectList = projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProjects(projectList);
+      setEditingProject(null);
+    } catch (error) {
+      console.error("Error updating project:", error);
+      alert("Failed to update project.");
+    }
   };
 
   const handleAddNewUser = async (e) => {
@@ -189,13 +275,23 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
     setUsers(users.filter(u => u.id !== userId));
   };
 
-  const handleUpdateUser = (e) => {
+  const handleUpdateUser = async (e) => {
     e.preventDefault();
-    const updatedUsers = users.map(user =>
-      user.id === editingUser.id ? { ...editingUser } : user
-    );
-    setUsers(updatedUsers);
-    setEditingUser(null);
+    try {
+      await updateDoc(doc(db, "users", editingUser.id), {
+        name: editingUser.name,
+        email: editingUser.email,
+        role: editingUser.role,
+      });
+      const usersCollection = collection(db, 'users');
+      const userSnapshot = await getDocs(usersCollection);
+      const userList = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUsers(userList);
+      setEditingUser(null);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      alert("Failed to update user.");
+    }
   };
 
   const handleLogout = () => {
@@ -277,7 +373,7 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
             <div className="summary-card clickable" key={project.id} onClick={() => setShowProjectDetailsFor(showProjectDetailsFor === project.id ? null : project.id)}>
               <h3>{project.name}</h3>
               <div className="pie-chart-container">
-                <div className="pie-chart" style={{ background: `conic-gradient(#4caf50 ${(calculateProjectCost(project.name) / project.budget) * 100}%, #f44336 0)` }}></div>
+                <div className="pie-chart" style={{ background: `conic-gradient(#4caf50 ${project.budget > 0 ? Math.min(100, (calculateProjectCost(project.name) / project.budget) * 100) : 0}%, #f44336 0)` }}></div>
                 <div className="legend">
                   <div><span className="legend-color" style={{ backgroundColor: '#4caf50' }}></span> Spent</div>
                   <div><span className="legend-color" style={{ backgroundColor: '#f44336' }}></span> Remaining</div>
@@ -287,15 +383,15 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
                 <div className="project-metrics">
                   <div className="metric">
                     <span className="metric-label">Budget:</span>
-                    <span className="metric-value">${project.budget.toLocaleString()}</span>
+                    <span className="metric-value">Ksh{project.budget.toLocaleString()}</span>
                   </div>
                   <div className="metric">
                     <span className="metric-label">Spent:</span>
-                    <span className="metric-value">${calculateProjectCost(project.name).toLocaleString()}</span>
+                    <span className="metric-value">Ksh{calculateProjectCost(project.name).toLocaleString()}</span>
                   </div>
                   <div className="metric">
                     <span className="metric-label">Remaining:</span>
-                    <span className="metric-value">${(project.budget - calculateProjectCost(project.name)).toLocaleString()}</span>
+                    <span className="metric-value">Ksh{(project.budget - calculateProjectCost(project.name)).toLocaleString()}</span>
                   </div>
                 </div>
               )}
@@ -328,10 +424,10 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
               </tr>
             </thead>
             <tbody>
-              {projects.map(project => (
+              {filteredProjects.map(project => (
                 <tr key={project.id}>
                   <td onClick={() => setSelectedProjectForAnalysis(project)} className="clickable">{project.name}</td>
-                  <td>${project.budget.toLocaleString()}</td>
+                  <td>Ksh{project.budget.toLocaleString()}</td>
                   <td>{project.startDate}</td>
                   <td>{project.expectedCompletionDate}</td>
                   <td>
@@ -421,7 +517,7 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
               </tr>
             </thead>
             <tbody>
-              {users.map(user => (
+              {filteredUsers.map(user => (
                 <tr key={user.id}>
                   <td>{user.name}</td>
                   <td>{user.email}</td>
@@ -531,7 +627,7 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
                 </div>
                 <div className="summary-stat">
                   <span className="stat-label">Total Value:</span>
-                  <span className="stat-value">${reportData.data.reduce((sum, item) => sum + item.totalValue, 0).toLocaleString()}</span>
+                  <span className="stat-value">Ksh{reportData.data.reduce((sum, item) => sum + item.totalValue, 0).toLocaleString()}</span>
                 </div>
                 <div className="summary-stat">
                   <span className="stat-label">Low Stock Items:</span>
@@ -556,8 +652,8 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
                       <tr key={item.id}>
                         <td>{item.name}</td>
                         <td>{item.quantity}</td>
-                        <td>${item.unitCost}</td>
-                        <td>${item.totalValue.toLocaleString()}</td>
+                        <td>Ksh{item.unitCost}</td>
+                        <td>Ksh{item.totalValue.toLocaleString()}</td>
                         <td>{item.supplier}</td>
                         <td>
                           {item.lowStock ?
@@ -590,7 +686,7 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
                 </div>
                 <div className="summary-stat">
                   <span className="stat-label">Total Cost:</span>
-                  <span className="stat-value">${reportData.summary.totalCost.toLocaleString()}</span>
+                  <span className="stat-value">Ksh{reportData.summary.totalCost.toLocaleString()}</span>
                 </div>
               </div>
               
@@ -612,7 +708,7 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
                         <td>{req.item}</td>
                         <td>{req.quantity}</td>
                         <td>{req.project}</td>
-                        <td>${(req.quantity * req.unitCost).toLocaleString()}</td>
+                        <td>Ksh{(req.quantity * req.unitCost).toLocaleString()}</td>
                         <td>{req.requestDate}</td>
                         <td>
                           <span className={`status-badge status-${req.status}`}>
@@ -640,11 +736,11 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
                 </div>
                 <div className="summary-stat">
                   <span className="stat-label">Total Budget:</span>
-                  <span className="stat-value">${reportData.data.reduce((sum, p) => sum + p.budget, 0).toLocaleString()}</span>
+                  <span className="stat-value">Ksh{reportData.data.reduce((sum, p) => sum + p.budget, 0).toLocaleString()}</span>
                 </div>
                 <div className="summary-stat">
                   <span className="stat-label">Total Spent:</span>
-                  <span className="stat-value">${reportData.data.reduce((sum, p) => sum + p.spent, 0).toLocaleString()}</span>
+                  <span className="stat-value">Ksh{reportData.data.reduce((sum, p) => sum + p.spent, 0).toLocaleString()}</span>
                 </div>
               </div>
               
@@ -664,9 +760,9 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
                     {reportData.data.map(project => (
                       <tr key={project.id}>
                         <td>{project.name}</td>
-                        <td>${project.budget.toLocaleString()}</td>
-                        <td>${project.spent.toLocaleString()}</td>
-                        <td>${project.remaining.toLocaleString()}</td>
+                        <td>Ksh{project.budget.toLocaleString()}</td>
+                        <td>Ksh{project.spent.toLocaleString()}</td>
+                        <td>Ksh{project.remaining.toLocaleString()}</td>
                         <td>
                           <div className="progress-bar">
                             <div className="progress-fill" style={{ width: `${Math.min(project.progress, 100)}%` }}></div>
@@ -698,11 +794,14 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
           <table className="data-table">
             <thead>
               <tr>
-                <th>Item</th>
+                <th>Requester Name</th>
+                <th>Items</th>
                 <th>Quantity</th>
-                <th>Project</th>
-                <th>Cost</th>
-                <th>Date</th>
+                <th>Project Name</th>
+                <th>Category</th>
+                <th>Item</th>
+                <th>Reason for Request</th>
+                <th>Request Date</th>
                 <th>Status</th>
                 <th>Change Status</th>
               </tr>
@@ -710,11 +809,14 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
             <tbody>
               {filteredRequisitions.map(req => (
                 <tr key={req.id}>
-                  <td>{req.item}</td>
+                  <td>{req.name}</td>
+                  <td>{req.items}</td>
                   <td>{req.quantity}</td>
-                  <td>{req.project}</td>
-                  <td>${(req.quantity * req.unitCost).toLocaleString()}</td>
-                  <td>{req.requestDate}</td>
+                  <td>{req.projectName}</td>
+                  <td>{req.category}</td>
+                  <td>{req.items}</td>
+                  <td>{req.reasonForRequest}</td>
+                  <td>{req.date}</td>
                   <td>
                     <span className={`status-badge status-${req.status}`}>
                       {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
@@ -742,17 +844,27 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
     </div>
   );
 
-  const handleAddNewItem = (e) => {
+  const handleAddNewItem = async (e) => {
     e.preventDefault();
     const newItem = {
-      id: `stock${stocks.length + 1}`,
       name: e.target.name.value,
       quantity: parseInt(e.target.quantity.value, 10),
       unitCost: parseFloat(e.target.unitCost.value),
       supplier: e.target.supplier.value,
+      project: e.target.project.value,
     };
-    setStocks([...stocks, newItem]);
-    e.target.reset();
+
+    try {
+      await addDoc(collection(db, 'stockItems'), newItem);
+      e.target.reset();
+      const stockCollection = collection(db, 'stockItems');
+      const stockSnapshot = await getDocs(stockCollection);
+      const stockList = stockSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setStocks(stockList);
+    } catch (error) {
+      console.error("Error adding new stock item:", error);
+      alert("Failed to add new stock item.");
+    }
   };
 
   const renderStockManagement = () => (
@@ -768,16 +880,18 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
                 <th>Unit Cost</th>
                 <th>Total Value</th>
                 <th>Supplier</th>
+                <th>Project Name</th>
               </tr>
             </thead>
             <tbody>
-              {stocks.map(stock => (
+              {filteredStocks.map(stock => (
                 <tr key={stock.id}>
                   <td>{stock.name}</td>
                   <td>{stock.quantity}</td>
-                  <td>${stock.unitCost}</td>
-                  <td>${(stock.quantity * stock.unitCost).toLocaleString()}</td>
+                  <td>Ksh{stock.unitCost}</td>
+                  <td>Ksh{(stock.quantity * stock.unitCost).toLocaleString()}</td>
                   <td>{stock.supplier}</td>
+                  <td>{stock.project}</td>
                 </tr>
               ))}
             </tbody>
@@ -792,6 +906,12 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
           <input type="number" name="quantity" placeholder="Quantity" required />
           <input type="number" name="unitCost" placeholder="Unit Cost" step="0.01" required />
           <input type="text" name="supplier" placeholder="Supplier" required />
+          <select name="project" required>
+            <option value="">Select Project</option>
+            {projects.map(project => (
+              <option key={project.id} value={project.name}>{project.name}</option>
+            ))}
+          </select>
           <div className="form-actions">
             <button type="submit" className="btn btn-primary">Add Item</button>
           </div>
@@ -1110,6 +1230,10 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
           font-size: 1rem;
           outline: none;
           margin-left: 10px;
+        }
+
+        .search-icon {
+          color: #aaa;
         }
 
         .search-icon {
@@ -1534,15 +1658,11 @@ export default function CleanAdminDashboard({ projects, addProject, deleteProjec
           <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
             <FaBars />
           </button>
-          <div className="search-bar">
-            <FaSearch className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search requisitions..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+          <SearchBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            placeholder="Search across stocks, requisitions, projects, and users..."
+          />
         </header>
         {renderContent()}
       </main>

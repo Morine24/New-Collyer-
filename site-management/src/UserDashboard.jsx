@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getAuth, signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { FaBox, FaClipboardList, FaHome, FaSignOutAlt, FaBars, FaSearch, FaTimes, FaBell, FaFileAlt, FaPlus, FaExchangeAlt } from 'react-icons/fa';
@@ -22,13 +22,7 @@ const mockCategories = [
 
 
 
-const mockRequisitions = [
-  { id: 'req1', name: 'John Doe', items: 'Cement', quantity: 20, status: 'approved', projectName: 'Building A', category: 'Construction', reasonForRequest: 'New construction phase', date: '2025-08-15', unitCost: 50 },
-  { id: 'req2', name: 'Jane Smith', items: 'Bricks', quantity: 200, status: 'approved', projectName: 'Building B', category: 'Construction', reasonForRequest: 'Wall repair', date: '2025-08-14', unitCost: 2 },
-  { id: 'req3', name: 'John Doe', items: 'Steel Rods', quantity: 10, status: 'pending', projectName: 'Building A', category: 'Construction', reasonForRequest: 'Foundation work', date: '2025-08-13', unitCost: 120 },
-  { id: 'req4', name: 'Jane Smith', items: 'Paint', quantity: 5, status: 'approved', projectName: 'Building C', category: 'Finishing', reasonForRequest: 'Interior painting', date: '2025-08-16', unitCost: 25 },
-  { id: 'req5', name: 'Peter Jones', items: 'Tiles', quantity: 50, status: 'pending', projectName: 'Building B', category: 'Finishing', reasonForRequest: 'Bathroom renovation', date: '2025-08-12', unitCost: 15 }
-];
+
 
 const mockDeliveries = [
     { id: 'del1', item: 'Cement', quantity: 50, date: '2025-08-19'},
@@ -38,13 +32,16 @@ const mockDeliveries = [
 
 import RequisitionForm from './RequisitionForm';
 
-export default function UserDashboard({ projects, currentUserData }) {
+export default function UserDashboard({ projects, currentUserData, requisitions, addRequisition }) {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [stocks, setStocks] = useState(mockStocks);
-  const [requisitions, setRequisitions] = useState(mockRequisitions);
+  
   const [deliveries, setDeliveries] = useState(mockDeliveries);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredStocks, setFilteredStocks] = useState(mockStocks);
+  const [filteredRequisitions, setFilteredRequisitions] = useState(requisitions);
   const [issuedStock, setIssuedStock] = useState([]); // New state for issued stock
   const [damagedReturnedStock, setDamagedReturnedStock] = useState([]); // New state for damaged/returned stock
   const [selectedCard, setSelectedCard] = useState(null);
@@ -60,10 +57,52 @@ export default function UserDashboard({ projects, currentUserData }) {
   const [newDelivery, setNewDelivery] = useState({ item: '', quantity: 0, supplier: '' });
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestingItem, setRequestingItem] = useState(null);
+  const [newRequisitionQuantity, setNewRequisitionQuantity] = useState(0);
+  const [newRequisitionProject, setNewRequisitionProject] = useState('');
+
+  useEffect(() => {
+    const search = searchQuery.toLowerCase();
+
+    const filteredStks = stocks.filter(stock => {
+      const name = stock.name ? stock.name.toLowerCase() : '';
+      const category = stock.category ? stock.category.toLowerCase() : '';
+      const supplier = stock.supplier ? stock.supplier.toLowerCase() : '';
+      return name.includes(search) || category.includes(search) || supplier.includes(search);
+    });
+    setFilteredStocks(filteredStks);
+
+    const filteredReqs = requisitions.filter(req => {
+      const items = req.items ? req.items.toLowerCase() : '';
+      const projectName = req.projectName ? req.projectName.toLowerCase() : '';
+      const category = req.category ? req.category.toLowerCase() : '';
+      return items.includes(search) || projectName.includes(search) || category.includes(search);
+    });
+    setFilteredRequisitions(filteredReqs);
+
+  }, [searchQuery, stocks, requisitions]);
 
   const handleRequestItem = (item) => {
     setRequestingItem(item);
     setShowRequestModal(true);
+  };
+
+  const handleAddRequisitionSubmit = (e) => {
+    e.preventDefault();
+    const newRequisition = {
+      name: currentUserData.name,
+      items: requestingItem.name,
+      quantity: newRequisitionQuantity,
+      status: 'pending',
+      projectName: newRequisitionProject,
+      category: requestingItem.category,
+      reasonForRequest: 'User request',
+      date: new Date().toISOString().slice(0, 10),
+      unitCost: requestingItem.unitCost,
+    };
+    addRequisition(newRequisition);
+    setShowRequestModal(false);
+    setNewRequisitionQuantity(0);
+    setNewRequisitionProject('');
   };
 
   const handleLogout = async () => {
@@ -336,7 +375,7 @@ export default function UserDashboard({ projects, currentUserData }) {
                 </tr>
               </thead>
               <tbody>
-                {requisitions.map(req => (
+                {filteredRequisitions.map(req => (
                   <tr key={req.id}>
                     <td>{req.name}</td>
                     <td>{req.items}</td>
@@ -400,7 +439,7 @@ export default function UserDashboard({ projects, currentUserData }) {
                 </tr>
               </thead>
               <tbody>
-                {stocks.map(stock => (
+                {filteredStocks.map(stock => (
                   <tr key={stock.id}>
                     <td>{stock.name}</td>
                     <td>{stock.quantity}</td>
@@ -599,22 +638,21 @@ export default function UserDashboard({ projects, currentUserData }) {
 
         .dashboard-container {
           display: flex;
-          min-height: 100vh;
+          height: 100vh; /* Use height instead of min-height for explicit sizing */
 
         }
 
         /* Sidebar */
         .sidebar {
           width: 250px;
-          background-color: #1a237e; /* Deep blue */
+          background-color: #141b5fff; /* Deep blue */
           color: #fff;
           display: flex;
           flex-direction: column;
           transition: width 0.3s ease;
           position: fixed;
-          height: 100%;
-          overflow-y: auto;
-          z-index: 1000;
+          height: 73%;
+          z-index: 400;
         }
 
         .sidebar-collapsed {
@@ -693,6 +731,7 @@ export default function UserDashboard({ projects, currentUserData }) {
           flex-grow: 1;
           padding: 20px;
           transition: margin-left 0.3s ease;
+          height: 100%; /* Ensure main content takes full height of its parent */
         }
 
         .sidebar-collapsed + .main-content {
@@ -812,6 +851,9 @@ export default function UserDashboard({ projects, currentUserData }) {
         /* General Sections */
         .section-content {
           padding: 20px 0;
+          width: 100%;
+          height: 100%; /* Occupy full height of its parent */
+          /* Removed overflow-y: auto to prevent scrollbar */
         }
 
         .card {
@@ -1095,6 +1137,8 @@ export default function UserDashboard({ projects, currentUserData }) {
             <input
               type="text"
               placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </header>

@@ -11,7 +11,16 @@ import StockClerkDashboard from './StockClerkDashboard';
 import UserDashboard from './UserDashboard';
 import ForemanDashboard from './ForemanDashboard';
 import ChangePassword from './ChangePassword';
+import ProtectedRoute from './ProtectedRoute';
 import './App.css';
+
+const mockRequisitions = [
+  { id: 'req1', name: 'John Doe', items: 'Cement', quantity: 20, status: 'approved', projectName: 'Building A', category: 'Construction', reasonForRequest: 'New construction phase', date: '2025-08-15', unitCost: 50 },
+  { id: 'req2', name: 'Jane Smith', items: 'Bricks', quantity: 200, status: 'approved', projectName: 'Building B', category: 'Construction', reasonForRequest: 'Wall repair', date: '2025-08-14', unitCost: 2 },
+  { id: 'req3', name: 'John Doe', items: 'Steel Rods', quantity: 10, status: 'pending', projectName: 'Building A', category: 'Construction', reasonForRequest: 'Foundation work', date: '2025-08-13', unitCost: 120 },
+  { id: 'req4', name: 'Jane Smith', items: 'Paint', quantity: 5, status: 'approved', projectName: 'Building C', category: 'Finishing', reasonForRequest: 'Interior painting', date: '2025-08-16', unitCost: 25 },
+  { id: 'req5', name: 'Peter Jones', items: 'Tiles', quantity: 50, status: 'pending', projectName: 'Building B', category: 'Finishing', reasonForRequest: 'Bathroom renovation', date: '2025-08-12', unitCost: 15 }
+];
 
 function App() {
   const [projects, setProjects] = useState([
@@ -20,6 +29,7 @@ function App() {
     { id: 'proj3', name: 'Building C', budget: 30000, startDate: '2025-08-10', expectedCompletionDate: '2025-12-10', status: 'pending' }
   ]);
   const [currentUserData, setCurrentUserData] = useState(null);
+  const [requisitions, setRequisitions] = useState(mockRequisitions);
 
   useEffect(() => {
     const auth = getAuth(app);
@@ -50,6 +60,18 @@ function App() {
     setProjects(projects.filter(p => p.id !== projectId));
   };
 
+  const addRequisition = (requisition) => {
+    setRequisitions([...requisitions, { ...requisition, id: `req${requisitions.length + 1}` }]);
+  };
+
+  const updateRequisitionStatus = (id, newStatus) => {
+    setRequisitions(prevRequisitions =>
+      prevRequisitions.map(req =>
+        req.id === id ? { ...req, status: newStatus } : req
+      )
+    );
+  };
+
   return (
     <Router>
       <div>
@@ -58,10 +80,10 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/change-password" element={<ChangePassword />} />
-          <Route path="/admin" element={<AdminDashboard projects={projects} addProject={addProject} deleteProject={deleteProject} currentUserData={currentUserData} />} />
-          <Route path="/stock-clerk" element={<StockClerkDashboard currentUserData={currentUserData} />} />
-          <Route path="/user-dashboard" element={<UserDashboard projects={projects.map(p => p.name)} currentUserData={currentUserData} />} />
-          <Route path="/foreman-dashboard" element={<ForemanDashboard currentUserData={currentUserData} />} />
+          <Route path="/admin" element={<ProtectedRoute><AdminDashboard projects={projects} addProject={addProject} deleteProject={deleteProject} currentUserData={currentUserData} requisitions={requisitions} updateRequisitionStatus={updateRequisitionStatus} /></ProtectedRoute>} />
+          <Route path="/stock-clerk" element={<ProtectedRoute><StockClerkDashboard currentUserData={currentUserData} /></ProtectedRoute>} />
+          <Route path="/user-dashboard" element={<ProtectedRoute><UserDashboard projects={projects.map(p => p.name)} currentUserData={currentUserData} requisitions={requisitions} addRequisition={addRequisition} /></ProtectedRoute>} />
+          <Route path="/foreman-dashboard" element={<ProtectedRoute><ForemanDashboard currentUserData={currentUserData} /></ProtectedRoute>} />
         </Routes>
       </div>
     </Router>

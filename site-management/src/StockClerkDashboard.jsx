@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { getAuth, signOut } from 'firebase/auth';
-import { useNavigate } from 'react-router-dom';
 import { FaBox, FaClipboardList, FaHome, FaSignOutAlt, FaBars, FaSearch, FaTimes, FaBell, FaFileAlt, FaPlus, FaExchangeAlt } from 'react-icons/fa';
 
 const mockStocks = [
@@ -25,12 +23,11 @@ const mockDeliveries = [
     { id: 'del3', item: 'Bricks', quantity: 500, date: '2025-08-17'},
 ];
 
-export default function StockClerkDashboard({ currentUserData }) {
-  const navigate = useNavigate();
+export default function StockClerkDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [stocks, setStocks] = useState(mockStocks);
-  const [requisitions, setRequisitions] = useState(mockRequisitions.filter(r => r.status === 'approved'));
+  const [requisitions, setRequisitions] = useState(mockRequisitions);
   const [deliveries, setDeliveries] = useState(mockDeliveries);
   const [issuedStock, setIssuedStock] = useState([]); // New state for issued stock
   const [damagedReturnedStock, setDamagedReturnedStock] = useState([]); // New state for damaged/returned stock
@@ -47,16 +44,9 @@ export default function StockClerkDashboard({ currentUserData }) {
   const [newDelivery, setNewDelivery] = useState({ item: '', quantity: 0, supplier: '' });
   const [damagedStockDetails, setDamagedStockDetails] = useState({ item: '', quantity: 0, reason: '' });
 
-  const handleLogout = async () => {
-    try {
-      const auth = getAuth();
-      await signOut(auth);
-      console.log('Stock Clerk logged out successfully');
-      navigate('/'); // Redirect to login page
-    } catch (error) {
-      console.error('Error logging out:', error);
-      alert('Failed to log out. Please try again.');
-    }
+  const handleLogout = () => {
+    console.log('Stock Clerk logged out');
+    // Add logout logic here
   };
 
   const handleUpdateRequisitionStatus = (id, newStatus) => {
@@ -310,7 +300,6 @@ export default function StockClerkDashboard({ currentUserData }) {
                       onChange={(e) => handleUpdateRequisitionStatus(req.id, e.target.value)}
                       className="form-grid-select"
                     >
-                      <option value="approved">Approved</option>
                       <option value="fulfilled">Fulfilled</option>
                       <option value="not-fulfilled">Not Fulfilled</option>
                     </select>
@@ -627,7 +616,7 @@ export default function StockClerkDashboard({ currentUserData }) {
           margin: 0;
           display: flex;
           flex-direction: column; /* Arrange items top-to-bottom */
-        } 
+        }
 
         .sidebar-nav li {
           padding: 15px 20px;
@@ -1018,26 +1007,7 @@ export default function StockClerkDashboard({ currentUserData }) {
       `}</style>
       <aside className="sidebar">
         <div className="sidebar-header">
-                    {isSidebarOpen && (
-            <>
-              <div style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                backgroundColor: '#FFD600', // Example color
-                marginRight: '3px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#1a237e', // Text color for inside the circle
-                fontWeight: 'bold',
-                fontSize: '0.8em'
-              }}>
-                {currentUserData ? currentUserData.name.charAt(0).toUpperCase() : 'S'}
-              </div>
-              <h2>{currentUserData ? currentUserData.name : 'Stock Clerk'}</h2>
-            </>
-          )}
+          {isSidebarOpen && <h2>Stock Clerk</h2>}
           <button className="toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <FaTimes />
           </button>
@@ -1160,3 +1130,4 @@ export default function StockClerkDashboard({ currentUserData }) {
     </div>
   );
 }
+
