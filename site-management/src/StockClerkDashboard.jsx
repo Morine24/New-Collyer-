@@ -1,13 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaBox, FaClipboardList, FaHome, FaSignOutAlt, FaBars, FaSearch, FaTimes, FaBell, FaFileAlt, FaPlus, FaExchangeAlt } from 'react-icons/fa';
+import { db } from './firebase';
+import { collection, getDocs } from 'firebase/firestore';
 
-const mockStocks = [
-  { id: 'stock1', name: 'Cement', quantity: 100, unitCost: 50, supplier: 'BuildCorp' },
-  { id: 'stock2', name: 'Steel Rods', quantity: 10, unitCost: 120, supplier: 'MetalWorks' },
-  { id: 'stock3', name: 'Bricks', quantity: 1000, unitCost: 2, supplier: 'BrickMasters' },
-  { id: 'stock4', name: 'Paint', quantity: 5, unitCost: 25, supplier: 'ColorPlus' },
-  { id: 'stock5', name: 'Tiles', quantity: 200, unitCost: 15, supplier: 'TilePro' }
-];
+
 
 const mockRequisitions = [
   { id: 'req1', item: 'Cement', quantity: 20, status: 'approved', project: 'Building A', requestDate: '2025-08-15', unitCost: 50 },
@@ -26,52 +22,59 @@ const mockDeliveries = [
 export default function StockClerkDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
-  const [stocks, setStocks] = useState(mockStocks);
+  const [stocks, setStocks] = useState([]);
   const [requisitions, setRequisitions] = useState(mockRequisitions);
   const [deliveries, setDeliveries] = useState(mockDeliveries);
   const [issuedStock, setIssuedStock] = useState([]); // New state for issued stock
   const [damagedReturnedStock, setDamagedReturnedStock] = useState([]); // New state for damaged/returned stock
   const [selectedCard, setSelectedCard] = useState(null);
-  const [showAddStockModal, setShowAddStockModal] = useState(false);
-  const [showEditStockModal, setShowEditStockModal] = useState(false);
-  const [editingStockItem, setEditingStockItem] = useState(null);
   const [showIssueStockModal, setShowIssueStockModal] = useState(false);
   const [issuingStockItem, setIssuingStockItem] = useState(null);
   const [activeReport, setActiveReport] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
-  const [newStock, setNewStock] = useState({ id: '', name: '', quantity: 0, unitCost: 0, supplier: '' });
   const [issueDetails, setIssueDetails] = useState({ quantity: 0, issuedTo: '' });
   const [newDelivery, setNewDelivery] = useState({ item: '', quantity: 0, supplier: '' });
   const [damagedStockDetails, setDamagedStockDetails] = useState({ item: '', quantity: 0, reason: '' });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [filteredStocks, setFilteredStocks] = useState([]);
 
   const handleLogout = () => {
     console.log('Stock Clerk logged out');
     // Add logout logic here
   };
 
-  const handleUpdateRequisitionStatus = (id, newStatus) => {
-    const updatedReqs = requisitions.map(req =>
-      req.id === id ? { ...req, status: newStatus } : req
+  useEffect(() => {
+    const fetchStock = async () => {
+      const stockCollection = collection(db, 'stock');
+      const stockSnapshot = await getDocs(stockCollection);
+      const stockList = stockSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setStocks(stockList);
+      setFilteredStocks(stockList);
+    };
+
+    fetchStock();
+  }, []);
+
+  useEffect(() => {
+    let result = stocks.filter(item => 
+      (item.project && item.project.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-    setRequisitions(updatedReqs);
-  };
 
-  const handleAddStockSubmit = (e) => {
-    e.preventDefault();
-    const id = `stock${stocks.length + 1}`;
-    setStocks([...stocks, { ...newStock, id }]);
-    setNewStock({ id: '', name: '', quantity: 0, unitCost: 0, supplier: '' });
-    setShowAddStockModal(false);
-  };
+    result.sort((a, b) => {
+      const projectA = a.project ? a.project.toLowerCase() : '';
+      const projectB = b.project ? b.project.toLowerCase() : '';
+      if (projectA < projectB) {
+        return sortOrder === 'asc' ? -1 : 1;
+      }
+      if (projectA > projectB) {
+        return sortOrder === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
 
-  const handleEditStockSubmit = (e) => {
-    e.preventDefault();
-    setStocks(stocks.map(stock =>
-      stock.id === editingStockItem.id ? editingStockItem : stock
-    ));
-    setEditingStockItem(null);
-    setShowEditStockModal(false);
-  };
+    setFilteredStocks(result);
+  }, [searchTerm, sortOrder, stocks]);
 
   const handleIssueStockSubmit = (e) => {
     e.preventDefault();
@@ -210,19 +213,19 @@ export default function StockClerkDashboard() {
       case 'stock-overview':
         title = 'Stock Overview';
         columns = ['Item', 'Quantity', 'Status'];
-        columnMapping = { 'Item': 'name', 'Quantity': 'quantity', 'Status': 'status' };
+        columnMapping = { 'Item': 'items', 'Quantity': 'quantity', 'Status': 'status' };
         data = stocks.map(s => ({...s, status: s.quantity < 20 ? 'Low Stock' : 'Normal'}));
         break;
       case 'low-stock-alerts':
         title = 'Low Stock Alerts';
         columns = ['Item', 'Quantity'];
-        columnMapping = { 'Item': 'name', 'Quantity': 'quantity' };
+        columnMapping = { 'Item': 'items', 'Quantity': 'quantity' };
         data = stocks.filter(stock => stock.quantity < 20);
         break;
       case 'recent-deliveries':
         title = 'Recently Received Deliveries';
         columns = ['Item', 'Quantity', 'Date'];
-        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Date': 'date' };
+        columnMapping = { 'Item': 'items', 'Quantity': 'quantity', 'Date': 'date' };
         data = deliveries;
         break;
       default:
@@ -314,23 +317,6 @@ export default function StockClerkDashboard() {
   );
 
   const renderStockManagement = () => {
-    const handleAddStock = () => {
-      setShowAddStockModal(true);
-    };
-
-    const handleEditStock = (item) => {
-      setEditingStockItem(item);
-      setShowEditStockModal(true);
-    };
-
-    const handleDeleteStock = (id) => {
-      console.log("Delete Stock clicked for id:", id);
-      // Implement delete stock logic (e.g., confirmation dialog, update state)
-      if (window.confirm("Are you sure you want to delete this stock item?")) {
-        setStocks(stocks.filter(stock => stock.id !== id));
-      }
-    };
-
     const handleIssueStock = (item) => {
       setIssuingStockItem(item);
       setShowIssueStockModal(true);
@@ -340,9 +326,6 @@ export default function StockClerkDashboard() {
       <div className="section-content">
         <div className="card">
           <h3>Stock Management</h3>
-          <div className="stock-actions" style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-            <button className="btn btn-primary" onClick={handleAddStock}>Add New Stock</button>
-          </div>
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -355,16 +338,14 @@ export default function StockClerkDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {stocks.map(stock => (
+                {filteredStocks.map(stock => (
                   <tr key={stock.id}>
-                    <td>{stock.name}</td>
+                    <td>{stock.items}</td>
                     <td>{stock.quantity}</td>
                     <td>${stock.unitCost.toFixed(2)}</td>
                     <td>{stock.supplier}</td>
                     <td>
-                      <button className="btn btn-sm btn-info" onClick={() => handleEditStock(stock)}>Edit</button>
                       <button className="btn btn-sm btn-warning" onClick={() => handleIssueStock(stock)} style={{ marginLeft: '5px' }}>Issue</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDeleteStock(stock.id)} style={{ marginLeft: '5px' }}>Delete</button>
                     </td>
                   </tr>
                 ))}
@@ -1045,66 +1026,18 @@ export default function StockClerkDashboard() {
             <FaSearch className="search-icon" />
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Filter by project name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <select onChange={(e) => setSortOrder(e.target.value)} value={sortOrder}>
+            <option value="asc">Sort Ascending</option>
+            <option value="desc">Sort Descending</option>
+          </select>
         </header>
         {renderContent()}
       </main>
-
-      {/* Add Stock Modal */}
-      {showAddStockModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Add New Stock</h3>
-            <form onSubmit={handleAddStockSubmit} className="form-grid">
-              <label>Item Name:</label>
-              <input type="text" value={newStock.name} onChange={(e) => setNewStock({ ...newStock, name: e.target.value })} required />
-
-              <label>Quantity:</label>
-              <input type="number" value={newStock.quantity} onChange={(e) => setNewStock({ ...newStock, quantity: parseInt(e.target.value) })} required />
-
-              <label>Unit Cost:</label>
-              <input type="number" step="0.01" value={newStock.unitCost} onChange={(e) => setNewStock({ ...newStock, unitCost: parseFloat(e.target.value) })} required />
-
-              <label>Supplier:</label>
-              <input type="text" value={newStock.supplier} onChange={(e) => setNewStock({ ...newStock, supplier: e.target.value })} required />
-
-              <div className="modal-actions">
-                <button type="submit" className="btn btn-primary">Add Stock</button>
-                <button type="button" className="btn btn-danger" onClick={() => setShowAddStockModal(false)}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Stock Modal */}
-      {showEditStockModal && editingStockItem && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Edit Stock</h3>
-            <form onSubmit={handleEditStockSubmit} className="form-grid">
-              <label>Item Name:</label>
-              <input type="text" value={editingStockItem.name} onChange={(e) => setEditingStockItem({ ...editingStockItem, name: e.target.value })} required />
-
-              <label>Quantity:</label>
-              <input type="number" value={editingStockItem.quantity} onChange={(e) => setEditingStockItem({ ...editingStockItem, quantity: parseInt(e.target.value) })} required />
-
-              <label>Unit Cost:</label>
-              <input type="number" step="0.01" value={editingStockItem.unitCost} onChange={(e) => setEditingStockItem({ ...editingStockItem, unitCost: parseFloat(e.target.value) })} required />
-
-              <label>Supplier:</label>
-              <input type="text" value={editingStockItem.supplier} onChange={(e) => setEditingStockItem({ ...editingStockItem, supplier: e.target.value })} required />
-
-              <div className="modal-actions">
-                <button type="submit" className="btn btn-primary">Save Changes</button>
-                <button type="button" className="btn btn-danger" onClick={() => setShowEditStockModal(false)}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Issue Stock Modal */}
       {showIssueStockModal && issuingStockItem && (
