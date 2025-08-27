@@ -68,6 +68,7 @@ function App() {
       const requisitionsCollection = collection(db, 'requisitions');
       const requisitionSnapshot = await getDocs(requisitionsCollection);
       const requisitionList = requisitionSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log("Fetched Requisitions from Firestore:", requisitionList); // Add this line
       setRequisitions(requisitionList);
     };
 

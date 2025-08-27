@@ -137,22 +137,22 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   }, [searchQuery, requisitions, users, stocks, projects]);
 
   // Calculate requisition costs for a project
-  const calculateRequisitionCost = (projectName) => {
-    return requisitions
-      .filter(req => req.project === projectName)
-      .reduce((total, req) => total + (req.quantity * req.unitCost), 0);
+  // Calculate stock costs for a project (from stockItems added directly)
+  const calculateStockCosts = (projectName) => {
+    const project = projects.find(p => p.name === projectName);
+    return project ? (project.stockCostsSpent || 0) : 0;
   };
 
   // Calculate labor costs for a project
-  const calculateLaborCost = (projectName) => {
+  const calculateLaborCosts = (projectName) => {
     return laborCosts
-      .filter(lc => lc.projectName === projectName) // Assuming projectName is stored in laborCosts
+      .filter(lc => lc.projectName === projectName)
       .reduce((total, lc) => total + lc.amount, 0);
   };
 
-  // Calculate total project cost (requisitions + labor)
+  // Calculate total project cost (stock costs + labor costs)
   const calculateProjectCost = (projectName) => {
-    return calculateRequisitionCost(projectName) + calculateLaborCost(projectName);
+    return calculateStockCosts(projectName) + calculateLaborCosts(projectName);
   };
 
   const calculateTotalStockValue = () => {
@@ -221,7 +221,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   const handleAddNewProject = async (e) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, 'projects'), { ...newProjectData, status: 'pending' }); // Add status as pending by default
+      await addDoc(collection(db, 'projects'), { ...newProjectData, status: 'pending', stockCostsSpent: 0 }); // Initialize stockCostsSpent
       // Re-fetch projects to update the UI
       const projectsCollection = collection(db, 'projects');
       const projectSnapshot = await getDocs(projectsCollection);
@@ -442,12 +442,12 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                     <span className="metric-value">Ksh{project.budget.toLocaleString()}</span>
                   </div>
                   <div className="metric">
-                    <span className="metric-label">Requisition Cost:</span>
-                    <span className="metric-value">Ksh{calculateRequisitionCost(project.name).toLocaleString()}</span>
+                    <span className="metric-label">Stock Cost:</span>
+                    <span className="metric-value">Ksh{calculateStockCosts(project.name).toLocaleString()}</span>
                   </div>
                   <div className="metric">
                     <span className="metric-label">Labor Cost:</span>
-                    <span className="metric-value">Ksh{calculateLaborCost(project.name).toLocaleString()}</span>
+                    <span className="metric-value">Ksh{calculateLaborCosts(project.name).toLocaleString()}</span>
                   </div>
                   <div className="metric">
                     <span className="metric-label">Total Spent:</span>
@@ -941,15 +941,44 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     };
 
     try {
+      // Add new stock item to Firestore
       await addDoc(collection(db, 'stockItems'), newItem);
       e.target.reset();
+
+      // Calculate the cost of the new stock item
+      const itemCost = newItem.quantity * newItem.unitCost;
+
+      // Find the associated project
+      const projectToUpdate = projects.find(p => p.name === newItem.project);
+
+      if (projectToUpdate) {
+        // Add the cost to the project's stockCostsSpent
+        const newStockCostsSpent = (projectToUpdate.stockCostsSpent || 0) + itemCost;
+
+        // Update the project's stockCostsSpent in Firestore
+        const projectRef = doc(db, "projects", projectToUpdate.id);
+        await updateDoc(projectRef, { stockCostsSpent: newStockCostsSpent });
+
+        // Update the local projects state
+        setProjects(prevProjects =>
+          prevProjects.map(p =>
+            p.id === projectToUpdate.id ? { ...p, stockCostsSpent: newStockCostsSpent } : p
+          )
+        );
+        console.log(`Added ${itemCost} to stock costs for project ${projectToUpdate.name}. New stock costs spent: ${newStockCostsSpent}`);
+      } else {
+        console.warn(`Project "${newItem.project}" not found for stock cost tracking.`);
+      }
+
+      // Re-fetch stocks to update the UI
       const stockCollection = collection(db, 'stockItems');
       const stockSnapshot = await getDocs(stockCollection);
       const stockList = stockSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setStocks(stockList);
+
     } catch (error) {
-      console.error("Error adding new stock item:", error);
-      alert("Failed to add new stock item.");
+      console.error("Error adding new stock item or updating project stock costs:", error);
+      alert("Failed to add new stock item or update project stock costs.");
     }
   };
 

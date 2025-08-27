@@ -257,7 +257,7 @@ export default function UserDashboard({ projects, currentUserData, requisitions,
             <div className="summary-icon"><FaClipboardList /></div>
             <div className="summary-content">
               <h4>Declined Requisitions</h4>
-              <p className="summary-value">{requisitions.filter(req => req.status === 'declined').length}</p>
+              <p className="summary-value">{requisitions.filter(req => req.status === 'rejected').length}</p>
             </div>
           </div>
           
@@ -282,19 +282,23 @@ export default function UserDashboard({ projects, currentUserData, requisitions,
       case 'approved-requisitions':
         title = 'Approved Requisitions';
         columns = ['Item', 'Quantity', 'Project', 'Date'];
-        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Project': 'project', 'Date': 'requestDate' };
+        columnMapping = { 'Item': 'items', 'Quantity': 'quantity', 'Project': 'projectName', 'Date': 'date' };
         data = requisitions.filter(req => req.status === 'approved');
+        console.log("Approved Requisitions Data:", data); // Log approved data
+
+
         break;
       case 'declined-requisitions':
         title = 'Declined Requisitions';
         columns = ['Item', 'Quantity', 'Project', 'Date'];
-        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Project': 'project', 'Date': 'requestDate' };
-        data = requisitions.filter(req => req.status === 'declined');
+        columnMapping = { 'Item': 'items', 'Quantity': 'quantity', 'Project': 'projectName', 'Date': 'date' };
+        data = requisitions.filter(req => req.status === 'rejected'); // Changed to 'rejected'
+        console.log("Declined Requisitions Data (filtered by 'rejected'):", data); // Log declined data
         break;
       case 'pending-requisitions':
         title = 'Pending Requisitions';
         columns = ['Item', 'Quantity', 'Project', 'Date'];
-        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Project': 'project', 'Date': 'requestDate' };
+        columnMapping = { 'Item': 'items', 'Quantity': 'quantity', 'Project': 'projectName', 'Date': 'date' };
         data = requisitions.filter(req => req.status === 'pending');
         break;
       default:
