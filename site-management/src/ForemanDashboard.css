@@ -1,0 +1,12 @@
+.foreman-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.dashboard-logo-img {
+  width: 150px;
+  height: auto;
+  margin-bottom: 1rem;
+}

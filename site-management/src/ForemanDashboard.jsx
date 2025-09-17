@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './ForemanDashboard.css';
+import logo from './assets/logo.jpeg';
 
 const ForemanDashboard = ({ currentUserData }) => {
   const [requests, setRequests] = useState([
@@ -53,22 +54,10 @@ const ForemanDashboard = ({ currentUserData }) => {
 
   return (
     <div className="foreman-dashboard">
-      <div style={{
-        width: '24px',
-        height: '24px',
-        borderRadius: '50%',
-        backgroundColor: '#FFD600', // Example color
-        marginRight: '3px',
-        display: 'inline-flex', // Use inline-flex to keep it on the same line as h1
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#1a237e', // Text color for inside the circle
-        fontWeight: 'bold',
-        fontSize: '0.8em'
-      }}>
-        {currentUserData ? currentUserData.name.charAt(0).toUpperCase() : 'F'}
+      <div className="foreman-header">
+        <img src={logo} alt="Collyer International Logo" className="dashboard-logo-img" />
+        <h1>{currentUserData ? currentUserData.name : 'Foreman'} Dashboard</h1>
       </div>
-      <h1>{currentUserData ? currentUserData.name : 'Foreman'} Dashboard</h1>
 
       {/* My Requests Section */}
       <section>

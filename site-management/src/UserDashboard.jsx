@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getAuth, signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { FaBox, FaClipboardList, FaHome, FaSignOutAlt, FaBars, FaSearch, FaTimes, FaBell, FaFileAlt, FaPlus, FaExchangeAlt } from 'react-icons/fa';
+import logo from './assets/logo.jpeg';
 
 const mockStocks = [
   { id: 'stock1', name: 'Cement', category: 'Construction', quantity: 100, unitCost: 50, supplier: 'BuildCorp' },
@@ -1076,21 +1077,7 @@ export default function UserDashboard({ projects, currentUserData, requisitions,
         <div className="sidebar-header">
                     {isSidebarOpen && (
             <>
-              <div style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                backgroundColor: '#FFD600', // Example color
-                marginRight: '3px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#1a237e', // Text color for inside the circle
-                fontWeight: 'bold',
-                fontSize: '0.8em'
-              }}>
-                {currentUserData ? currentUserData.name.charAt(0).toUpperCase() : 'U'}
-              </div>
+              <img src={logo} alt="Collyer International Logo" style={{width: '120px', height: 'auto', marginRight: '10px'}} />
               <h2>{currentUserData ? currentUserData.name : 'User'}</h2>
             </>
           )}

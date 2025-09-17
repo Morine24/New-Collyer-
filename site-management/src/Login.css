@@ -27,12 +27,12 @@ body {
 
 .login-logo {
   margin-bottom: 0.5rem;
-  animation: bounce 1.2s;
 }
 
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
+.login-logo-img {
+  max-width: 150px;
+  height: auto;
+  border-radius: 12px;
 }
 
 .login-title {

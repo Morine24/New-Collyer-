@@ -2,16 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { FaBox, FaClipboardList, FaHome, FaSignOutAlt, FaBars, FaSearch, FaTimes, FaBell, FaFileAlt, FaPlus, FaExchangeAlt } from 'react-icons/fa';
 import { db } from './firebase';
 import { collection, getDocs } from 'firebase/firestore';
+import logo from './assets/logo.jpeg';
 
 
 
-const mockRequisitions = [
-  { id: 'req1', item: 'Cement', quantity: 20, status: 'approved', project: 'Building A', requestDate: '2025-08-15', unitCost: 50 },
-  { id: 'req2', item: 'Bricks', quantity: 200, status: 'approved', project: 'Building B', requestDate: '2025-08-14', unitCost: 2 },
-  { id: 'req3', item: 'Steel Rods', quantity: 10, status: 'pending', project: 'Building A', requestDate: '2025-08-13', unitCost: 120 },
-  { id: 'req4', item: 'Paint', quantity: 5, status: 'approved', project: 'Building C', requestDate: '2025-08-16', unitCost: 25 },
-  { id: 'req5', item: 'Tiles', quantity: 50, status: 'pending', project: 'Building B', requestDate: '2025-08-12', unitCost: 15 }
-];
+
 
 const mockDeliveries = [
     { id: 'del1', item: 'Cement', quantity: 50, date: '2025-08-19'},
@@ -23,7 +18,7 @@ export default function StockClerkDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [stocks, setStocks] = useState([]);
-  const [requisitions, setRequisitions] = useState(mockRequisitions);
+  const [requisitions, setRequisitions] = useState([]);
   const [deliveries, setDeliveries] = useState(mockDeliveries);
   const [issuedStock, setIssuedStock] = useState([]); // New state for issued stock
   const [damagedReturnedStock, setDamagedReturnedStock] = useState([]); // New state for damaged/returned stock
@@ -38,6 +33,12 @@ export default function StockClerkDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState('asc');
   const [filteredStocks, setFilteredStocks] = useState([]);
+  const [selectedProject, setSelectedProject] = useState('');
+
+  const handleUpdateRequisitionStatus = (id, status) => {
+    // TODO: Implement the actual logic to update the requisition status in Firestore
+    console.log(`Updating requisition ${id} to ${status}`);
+  };
 
   const handleLogout = () => {
     console.log('Stock Clerk logged out');
@@ -46,7 +47,7 @@ export default function StockClerkDashboard() {
 
   useEffect(() => {
     const fetchStock = async () => {
-      const stockCollection = collection(db, 'stock');
+      const stockCollection = collection(db, 'stockItems');
       const stockSnapshot = await getDocs(stockCollection);
       const stockList = stockSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setStocks(stockList);
@@ -57,24 +58,27 @@ export default function StockClerkDashboard() {
   }, []);
 
   useEffect(() => {
+    const fetchRequisitions = async () => {
+      const requisitionsCollection = collection(db, 'requisitions');
+      const requisitionsSnapshot = await getDocs(requisitionsCollection);
+      const requisitionsList = requisitionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setRequisitions(requisitionsList);
+    };
+
+    fetchRequisitions();
+  }, []);
+
+  useEffect(() => {
     let result = stocks.filter(item => 
       (item.project && item.project.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    result.sort((a, b) => {
-      const projectA = a.project ? a.project.toLowerCase() : '';
-      const projectB = b.project ? b.project.toLowerCase() : '';
-      if (projectA < projectB) {
-        return sortOrder === 'asc' ? -1 : 1;
-      }
-      if (projectA > projectB) {
-        return sortOrder === 'asc' ? 1 : -1;
-      }
-      return 0;
-    });
+    if (selectedProject) {
+      result = result.filter(item => item.project === selectedProject);
+    }
 
     setFilteredStocks(result);
-  }, [searchTerm, sortOrder, stocks]);
+  }, [searchTerm, selectedProject, stocks]);
 
   const handleIssueStockSubmit = (e) => {
     e.preventDefault();
@@ -143,6 +147,8 @@ export default function StockClerkDashboard() {
     setDamagedStockDetails({ item: '', quantity: 0, reason: '' }); // Clear form
     setActiveAction(null); // Go back to quick actions menu
   };
+
+  const projectNames = [...new Set(stocks.map(stock => stock.project))];
 
   const downloadCSV = (data, filename) => {
     if (!data || data.length === 0) {
@@ -213,19 +219,19 @@ export default function StockClerkDashboard() {
       case 'stock-overview':
         title = 'Stock Overview';
         columns = ['Item', 'Quantity', 'Status'];
-        columnMapping = { 'Item': 'items', 'Quantity': 'quantity', 'Status': 'status' };
+        columnMapping = { 'Item': 'name', 'Quantity': 'quantity', 'Status': 'status' };
         data = stocks.map(s => ({...s, status: s.quantity < 20 ? 'Low Stock' : 'Normal'}));
         break;
       case 'low-stock-alerts':
         title = 'Low Stock Alerts';
         columns = ['Item', 'Quantity'];
-        columnMapping = { 'Item': 'items', 'Quantity': 'quantity' };
+        columnMapping = { 'Item': 'name', 'Quantity': 'quantity' };
         data = stocks.filter(stock => stock.quantity < 20);
         break;
       case 'recent-deliveries':
         title = 'Recently Received Deliveries';
         columns = ['Item', 'Quantity', 'Date'];
-        columnMapping = { 'Item': 'items', 'Quantity': 'quantity', 'Date': 'date' };
+        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Date': 'date' };
         data = deliveries;
         break;
       default:
@@ -288,10 +294,10 @@ export default function StockClerkDashboard() {
             <tbody>
               {requisitions.map(req => (
                 <tr key={req.id}>
-                  <td>{req.item}</td>
+                  <td>{req.items}</td>
                   <td>{req.quantity}</td>
-                  <td>{req.project}</td>
-                  <td>{req.requestDate}</td>
+                  <td>{req.projectName}</td>
+                  <td>{req.date}</td>
                   <td>
                     <span className={`status-badge status-${req.status}`}>
                       {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
@@ -334,16 +340,18 @@ export default function StockClerkDashboard() {
                   <th>Quantity</th>
                   <th>Unit Cost</th>
                   <th>Supplier</th>
+                  <th>Project</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStocks.map(stock => (
                   <tr key={stock.id}>
-                    <td>{stock.items}</td>
+                    <td>{stock.name}</td>
                     <td>{stock.quantity}</td>
                     <td>${stock.unitCost.toFixed(2)}</td>
                     <td>{stock.supplier}</td>
+                    <td>{stock.project}</td>
                     <td>
                       <button className="btn btn-sm btn-warning" onClick={() => handleIssueStock(stock)} style={{ marginLeft: '5px' }}>Issue</button>
                     </td>
@@ -988,7 +996,12 @@ export default function StockClerkDashboard() {
       `}</style>
       <aside className="sidebar">
         <div className="sidebar-header">
-          {isSidebarOpen && <h2>Stock Clerk</h2>}
+                    {isSidebarOpen && (
+            <>
+              <img src={logo} alt="Collyer International Logo" style={{width: '120px', height: 'auto', marginRight: '10px'}} />
+              <h2>Stock Clerk</h2>
+            </>
+          )}
           <button className="toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <FaTimes />
           </button>
@@ -1031,9 +1044,11 @@ export default function StockClerkDashboard() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <select onChange={(e) => setSortOrder(e.target.value)} value={sortOrder}>
-            <option value="asc">Sort Ascending</option>
-            <option value="desc">Sort Descending</option>
+          <select onChange={(e) => setSelectedProject(e.target.value)} value={selectedProject}>
+            <option value="">All Projects</option>
+            {projectNames.map(project => (
+              <option key={project} value={project}>{project}</option>
+            ))}
           </select>
         </header>
         {renderContent()}

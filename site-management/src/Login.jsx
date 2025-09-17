@@ -5,6 +5,7 @@ import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { Link, useNavigate } from 'react-router-dom';
 import { app } from './firebase';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import logo from './assets/logo.jpeg';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -65,10 +66,7 @@ export default function Login() {
     <div className="login-container">
       <div className="login-hero">
         <div className="login-logo">
-          <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="60" height="60" rx="12" fill="#FFD600" />
-            <path d="M15 45L30 15L45 45H15Z" fill="#111" />
-          </svg>
+          <img src={logo} alt="Collyer International Logo" className="login-logo-img" />
         </div>
         <h1 className="login-title">Site Management</h1>
         <p className="login-subtitle">Welcome! Please log in to continue.</p>
