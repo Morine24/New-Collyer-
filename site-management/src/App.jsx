@@ -14,13 +14,7 @@ import ChangePassword from './ChangePassword';
 import ProtectedRoute from './ProtectedRoute';
 import './App.css';
 
-const mockRequisitions = [
-  { id: 'req1', name: 'John Doe', items: 'Cement', quantity: 20, status: 'approved', projectName: 'Building A', category: 'Construction', reasonForRequest: 'New construction phase', date: '2025-08-15', unitCost: 50 },
-  { id: 'req2', name: 'Jane Smith', items: 'Bricks', quantity: 200, status: 'approved', projectName: 'Building B', category: 'Construction', reasonForRequest: 'Wall repair', date: '2025-08-14', unitCost: 2 },
-  { id: 'req3', name: 'John Doe', items: 'Steel Rods', quantity: 10, status: 'pending', projectName: 'Building A', category: 'Construction', reasonForRequest: 'Foundation work', date: '2025-08-13', unitCost: 120 },
-  { id: 'req4', name: 'Jane Smith', items: 'Paint', quantity: 5, status: 'approved', projectName: 'Building C', category: 'Finishing', reasonForRequest: 'Interior painting', date: '2025-08-16', unitCost: 25 },
-  { id: 'req5', name: 'Peter Jones', items: 'Tiles', quantity: 50, status: 'pending', projectName: 'Building B', category: 'Finishing', reasonForRequest: 'Bathroom renovation', date: '2025-08-12', unitCost: 15 }
-];
+
 
 function App() {
   const [projects, setProjects] = useState([]);
@@ -52,10 +46,14 @@ function App() {
   useEffect(() => {
     const db = getFirestore(app);
     const fetchProjects = async () => {
-      const projectsCollection = collection(db, 'projects');
-      const projectSnapshot = await getDocs(projectsCollection);
-      const projectList = projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setProjects(projectList);
+      try {
+        const projectsCollection = collection(db, 'projects');
+        const projectSnapshot = await getDocs(projectsCollection);
+        const projectList = projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setProjects(projectList);
+      } catch (e) {
+        console.warn('Projects fetch failed (likely permissions):', e.code || e.message);
+      }
     };
 
     fetchProjects();
@@ -65,11 +63,15 @@ function App() {
   useEffect(() => {
     const db = getFirestore(app);
     const fetchRequisitions = async () => {
-      const requisitionsCollection = collection(db, 'requisitions');
-      const requisitionSnapshot = await getDocs(requisitionsCollection);
-      const requisitionList = requisitionSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log("Fetched Requisitions from Firestore:", requisitionList); // Add this line
-      setRequisitions(requisitionList);
+      try {
+        const requisitionsCollection = collection(db, 'requisitions');
+        const requisitionSnapshot = await getDocs(requisitionsCollection);
+        const requisitionList = requisitionSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log("Fetched Requisitions from Firestore:", requisitionList); // Add this line
+        setRequisitions(requisitionList);
+      } catch (e) {
+        console.warn('Requisitions fetch failed (likely permissions):', e.code || e.message);
+      }
     };
 
     fetchRequisitions();

@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User profile documents. A user can read & update only their own document.
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Projects: readable by any signed-in user. Only managers/admins can write.
+    match /projects/{projectId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && (
+        // Custom claims set by Cloud Functions (role: 'admin')
+        request.auth.token.role == 'admin' ||
+        // Alternate role naming stored as Manager in Firestore doc (fallback check via request.resource)
+        request.auth.token.role == 'Manager'
+      );
+    }
+
+    // Requisitions: any signed-in user can create & read; limited update rules.
+    match /requisitions/{reqId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      // Allow status updates by privileged roles
+      allow update: if request.auth != null && (
+        request.auth.token.role in ['admin','Manager','Stock Clerk']
+      );
+    }
+
+    // Fallback deny everything else explicitly.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

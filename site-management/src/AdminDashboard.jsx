@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, getDocs, doc, setDoc, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaBell, FaBox, FaClipboardList, FaDollarSign, FaDownload, FaHome, FaChartLine, FaBars, FaSearch, FaUsers, FaProjectDiagram, FaSignOutAlt } from 'react-icons/fa';
@@ -26,7 +26,13 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   const [filteredStocks, setFilteredStocks] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    // Open by default on tablet/desktop (>=768px), closed on smaller
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return false;
+  });
   const [activeSection, setActiveSection] = useState('dashboard');
   const [reportType, setReportType] = useState('stock');
   const [reportPeriod, setReportPeriod] = useState('weekly');
@@ -47,7 +53,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     dateIncurred: '',
   });
   const [isAddLaborFormVisible, setIsAddLaborFormVisible] = useState(false);
-  const [selectedProjectForAnalysis, setSelectedProjectForAnalysis] = useState(null);
+  // Removed selectedProjectForAnalysis state (unused after removing cost analysis block)
   const [showProjectDetailsFor, setShowProjectDetailsFor] = useState(null);
   const [selectedNotification, setSelectedNotification] = useState(null);
 
@@ -137,6 +143,19 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
 
   }, [searchQuery, requisitions, users, stocks, projects]);
 
+  // Handle responsive sidebar behavior
+  useEffect(() => {
+    const handleResize = () => {
+      const isSmall = window.innerWidth < 768;
+      if (!isSmall && !isSidebarOpen) {
+        setIsSidebarOpen(true); // ensure open again when returning to wider layout
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isSidebarOpen]);
+
   // Calculate requisition costs for a project
   // Calculate stock costs for a project (from stockItems added directly)
   const calculateStockCosts = (projectName) => {
@@ -156,9 +175,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     return calculateStockCosts(projectName) + calculateLaborCosts(projectName);
   };
 
-  const calculateTotalStockValue = () => {
-    return stocks.reduce((total, stock) => total + (stock.quantity * stock.unitCost), 0);
-  };
+  // Removed unused calculateTotalStockValue to satisfy linter
 
   const getProjectProgress = (projectName) => {
     const project = projects.find(p => p.name === projectName);
@@ -172,45 +189,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   };
 
   // Handler for fulfilling a requisition and updating stock
-  const handleFulfillRequisition = async (req) => {
-    const stockItem = stocks.find(s => s.name === req.item);
-    if (!stockItem) {
-      alert("Stock not found for item: " + req.item);
-      return;
-    }
-
-    const newQuantity = stockItem.quantity - req.quantity;
-    if (newQuantity < 0) {
-      alert("Not enough stock to fulfill this requisition.");
-      return;
-    }
-
-    try {
-      // Update stock quantity in Firestore
-      await updateDoc(doc(db, 'stockItems', stockItem.id), { quantity: newQuantity });
-
-      // Update requisition status in Firestore (assuming requisitions are also in Firestore)
-      // This part is commented out as requisitions are currently mock data.
-      // If requisitions are to be persisted, similar Firestore operations would be needed here.
-      // await updateDoc(doc(db, 'requisitions', req.id), { status: 'fulfilled' });
-
-      // Re-fetch stocks to update the UI
-      const stockCollection = collection(db, 'stockItems');
-      const stockSnapshot = await getDocs(stockCollection);
-      const stockList = stockSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setStocks(stockList);
-
-      // Update local requisitions state (since they are mock data)
-      const updatedReqs = requisitions.map(r =>
-        r.id === req.id ? { ...r, status: 'fulfilled' } : r
-      );
-      setRequisitions(updatedReqs);
-
-    } catch (error) {
-      console.error("Error fulfilling requisition or updating stock:", error);
-      alert("Failed to fulfill requisition or update stock.");
-    }
-  };
+  // Removed unused handleFulfillRequisition (not referenced in UI)
 
   const handleNewProjectChange = (e) => {
     setNewProjectData({
@@ -492,7 +471,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
             <tbody>
               {filteredProjects.map(project => (
                 <tr key={project.id}>
-                  <td onClick={() => setSelectedProjectForAnalysis(project)} className="clickable">{project.name}</td>
+                  <td className="clickable">{project.name}</td>
                   <td>Ksh{project.budget.toLocaleString()}</td>
                   <td>{project.startDate}</td>
                   <td>{project.expectedCompletionDate}</td>
@@ -522,7 +501,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
         </div>
       </div>
 
-      {selectedProjectForAnalysis && renderCostAnalysis(selectedProjectForAnalysis)}
+  {/* Removed renderCostAnalysis as it was referenced but not defined */}
 
       {isAddProjectFormVisible && !editingProject && (
         <div className="card">
@@ -1177,17 +1156,24 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     <div className={`dashboard-container ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
       <style jsx>{`
         /* General Body and Layout */
+        html, body, #root {
+          height: 100%;
+        }
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
           margin: 0;
           padding: 0;
           background-color: #f0f2f5;
           color: #333;
+          overflow: hidden; /* prevent global scrollbars */
         }
 
         .dashboard-container {
           display: flex;
-          min-height: 100vh;
+          height: 100vh; /* lock to viewport */
+          width: 100%;
+          overflow: hidden; /* contain children */
+          position: relative;
         }
 
         /* Sidebar */
@@ -1197,11 +1183,26 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
           color: #fff;
           display: flex;
           flex-direction: column;
-          transition: width 0.3s ease;
+          transition: transform 0.3s ease, width 0.3s ease;
           position: fixed;
           height: 100%;
           overflow-y: auto;
           z-index: 1000;
+          transform: translateX(0);
+        }
+
+        .sidebar.closed {
+          transform: translateX(-100%);
+        }
+
+        /* Hide native scrollbar while retaining scroll functionality */
+        .sidebar {
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* IE 10+ */
+        }
+        .sidebar::-webkit-scrollbar { /* WebKit */
+          width: 0;
+          height: 0;
         }
 
         .sidebar-collapsed {
@@ -1278,7 +1279,12 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
           flex-grow: 1;
           padding: 20px;
           transition: margin-left 0.3s ease;
+          height: 100vh; /* fill viewport */
+          overflow: auto; /* internal scroll only */
+          -ms-overflow-style: none; /* IE / Edge */
+          scrollbar-width: none; /* Firefox */
         }
+        .main-content::-webkit-scrollbar { display: none; }
 
         .sidebar-collapsed + .main-content {
           margin-left: 60px;
@@ -1297,32 +1303,118 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
         }
 
         .menu-btn {
-          background: none;
+          background: #1a237e;
+          color: #fff;
           border: none;
-          font-size: 1.5rem;
+          padding: 10px 12px;
+          font-size: 1.2rem;
           cursor: pointer;
-          color: #555;
-          display: none;
+          border-radius: 6px;
+          display: none; /* Hidden on desktop by default */
+          align-items: center;
+          justify-content: center;
+          min-width: 44px;
+          min-height: 44px;
+          transition: background 0.2s ease;
         }
 
-        @media (max-width: 768px) {
+        .menu-btn:hover {
+          background: #283593;
+        }
+
+        /* Responsive Breakpoints */
+        /* Tablet and Small Desktop */
+        @media (max-width: 1200px) {
+          .main-content {
+            padding: 15px;
+          }
+          
+          .main-header {
+            padding: 12px 15px;
+          }
+        }
+
+        /* Mobile and Tablet Portrait */
+        @media (max-width: 992px) {
           .sidebar {
-            left: -250px;
-            transition: left 0.3s ease;
+            transform: translateX(-100%);
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+            z-index: 1001;
           }
 
-          .sidebar-collapsed {
-            left: 0;
-            width: 250px;
+          .sidebar:not(.closed) {
+            transform: translateX(0);
           }
 
           .main-content {
-            margin-left: 0;
+            margin-left: 0 !important;
+            padding: 10px;
           }
 
           .menu-btn {
-            display: block;
+            display: flex !important;
           }
+
+          .main-header {
+            flex-direction: row;
+            gap: 10px;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+          }
+        }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+          .main-content {
+            padding: 8px;
+          }
+
+          .main-header {
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+          }
+
+          .sidebar-header {
+            padding: 15px;
+          }
+
+          .sidebar-header h2 {
+            font-size: 1.2rem;
+          }
+
+          .sidebar-nav li {
+            padding: 12px 15px;
+            font-size: 1rem;
+          }
+        }
+
+        /* Small Mobile */
+        @media (max-width: 480px) {
+          .main-content {
+            padding: 5px;
+          }
+
+          .main-header {
+            padding: 5px 8px;
+            margin-bottom: 10px;
+          }
+
+          .sidebar {
+            width: 100vw;
+            max-width: 280px;
+          }
+
+          .sidebar-header {
+            padding: 12px;
+          }
+
+          .sidebar-nav li {
+            padding: 10px 12px;
+            font-size: 0.9rem;
+          }
+        }
 
           .search-bar {
             max-width: none; /* Allow search bar to take full width on small screens */
@@ -1376,6 +1468,30 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
           flex-direction: column;
           align-items: center;
           gap: 20px;
+        }
+
+        /* Mobile card responsive adjustments */
+        @media (max-width: 768px) {
+          .summary-cards {
+            grid-template-columns: 1fr;
+            gap: 15px;
+          }
+
+          .summary-card {
+            padding: 20px;
+            gap: 15px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .summary-cards {
+            gap: 10px;
+          }
+
+          .summary-card {
+            padding: 15px;
+            gap: 10px;
+          }
         }
 
         .summary-icon {
@@ -1487,27 +1603,60 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
         /* Tables */
         .table-container {
           overflow-x: auto;
+          margin: 0 -5px; /* Compensate for mobile padding */
         }
 
         .data-table {
           width: 100%;
           border-collapse: collapse;
+          min-width: 600px; /* Ensure table doesn't get too cramped */
         }
 
         .data-table th, .data-table td {
           padding: 15px;
           text-align: left;
           border-bottom: 1px solid #e0e0e0;
+          white-space: nowrap;
         }
 
         .data-table th {
           background-color: #fafafa;
           font-weight: 600;
           color: #555;
+          position: sticky;
+          top: 0;
+          z-index: 10;
         }
 
         .data-table tbody tr:hover {
           background-color: #f5f5f5;
+        }
+
+        /* Mobile table adjustments */
+        @media (max-width: 768px) {
+          .data-table {
+            min-width: 500px;
+          }
+          
+          .data-table th, .data-table td {
+            padding: 8px 6px;
+            font-size: 0.85rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .table-container {
+            margin: 0 -8px;
+          }
+          
+          .data-table {
+            min-width: 400px;
+          }
+          
+          .data-table th, .data-table td {
+            padding: 6px 4px;
+            font-size: 0.8rem;
+          }
         }
 
         .clickable {
@@ -1704,6 +1853,50 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
           margin-left: 20px;
         }
 
+        /* Mobile chart responsive adjustments */
+        @media (max-width: 768px) {
+          .pie-chart-container {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+
+          .legend {
+            margin-left: 0;
+            margin-top: 15px;
+          }
+
+          .chart-bar-container {
+            flex-direction: column;
+            gap: 5px;
+          }
+
+          .chart-bar {
+            height: 25px;
+            line-height: 25px;
+            padding-left: 8px;
+            font-size: 0.875rem;
+          }
+        }
+
+        /* Mobile overlay when sidebar is open */
+        .sidebar-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 999;
+          display: none;
+        }
+
+        @media (max-width: 992px) {
+          .sidebar-overlay.active {
+            display: block;
+          }
+        }
+
         .legend-color {
           display: inline-block;
           width: 20px;
@@ -1713,16 +1906,26 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
         }
       `}</style>
 
-      <aside className="sidebar">
+      {/* Mobile overlay */}
+      <div 
+        className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`}
+        onClick={() => setIsSidebarOpen(false)}
+      ></div>
+
+      <aside className={`sidebar ${isSidebarOpen ? '' : 'closed'}`}>
         <div className="sidebar-header">
-                    {isSidebarOpen && (
+          {isSidebarOpen && (
             <>
               <img src={logo} alt="Collyer International Logo" style={{width: '120px', height: 'auto', marginRight: '10px'}} />
               <h2>{currentUserData ? currentUserData.name : 'Admin'}</h2>
             </>
           )}
-          <button className="toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            <FaTimes />
+          <button
+            aria-label="Close menu"
+            className="toggle-btn"
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            ×
           </button>
         </div>
         <nav className="sidebar-nav">
@@ -1757,8 +1960,12 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
 
       <main className="main-content">
         <header className="main-header">
-          <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
-            <FaBars />
+          <button 
+            className="menu-btn" 
+            onClick={() => setIsSidebarOpen(prev => !prev)}
+            aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+          >
+            {isSidebarOpen ? <FaTimes /> : <FaBars />}
           </button>
           <SearchBar
             searchQuery={searchQuery}
