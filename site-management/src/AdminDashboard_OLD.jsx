@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -6,7 +7,12 @@ import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaBell, FaBox, FaClipboardList, FaDollarSign, FaDownload, FaHome, FaChartLine, FaBars, FaSearch, FaUsers, FaProjectDiagram, FaSignOutAlt } from 'react-icons/fa';
 import SearchBar from './SearchBar';
 import logo from './assets/logo.jpeg';
-import './AdminDashboard.css';
+
+
+
+
+
+
 
 export default function CleanAdminDashboard({ currentUserData, requisitions, updateRequisitionStatus }) {
   const navigate = useNavigate();
@@ -49,7 +55,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   const [isAddLaborFormVisible, setIsAddLaborFormVisible] = useState(false);
   // Removed selectedProjectForAnalysis state (unused after removing cost analysis block)
   const [showProjectDetailsFor, setShowProjectDetailsFor] = useState(null);
-  
+  const [selectedNotification, setSelectedNotification] = useState(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -401,36 +407,20 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
         <div className="summary-cards">
           {projects.map(project => (
             <div className="summary-card clickable" key={project.id} onClick={() => setShowProjectDetailsFor(showProjectDetailsFor === project.id ? null : project.id)}>
-              <div className="card-header">
-                <h3>{project.name}</h3>
-              </div>
+              <h3>{project.name}</h3>
               <div className="pie-chart-container">
-                <div className="pie-chart" style={{ background: `conic-gradient(#4caf50 ${project.budget > 0 ? Math.min(100, (calculateProjectCost(project.name) / project.budget) * 100) : 0}%, #e0e0e0 0)` }}>
-                  <span className="pie-chart-label">{getProjectProgress(project.name).toFixed(0)}%</span>
-                </div>
-              </div>
-              <div className="chart-legend">
-                <div className="legend-item">
-                  <div className="legend-color" style={{ backgroundColor: '#4caf50' }}></div>
-                  <span>Spent</span>
-                </div>
-                <div className="legend-item">
-                  <div className="legend-color" style={{ backgroundColor: '#e0e0e0' }}></div>
-                  <span>Remaining</span>
-                </div>
-              </div>
-              <div className="project-metrics">
-                <div className="metric">
-                  <span className="metric-label">Budget:</span>
-                  <span className="metric-value">Ksh{project.budget.toLocaleString()}</span>
-                </div>
-                <div className="metric">
-                  <span className="metric-label">Spent:</span>
-                  <span className="metric-value">Ksh{calculateProjectCost(project.name).toLocaleString()}</span>
+                <div className="pie-chart" style={{ background: `conic-gradient(#4caf50 ${project.budget > 0 ? Math.min(100, (calculateProjectCost(project.name) / project.budget) * 100) : 0}%, #f44336 0)` }}></div>
+                <div className="legend">
+                  <div><span className="legend-color" style={{ backgroundColor: '#4caf50' }}></span> Spent</div>
+                  <div><span className="legend-color" style={{ backgroundColor: '#f44336' }}></span> Remaining</div>
                 </div>
               </div>
               {showProjectDetailsFor === project.id && (
-                <div className="project-details">
+                <div className="project-metrics">
+                  <div className="metric">
+                    <span className="metric-label">Budget:</span>
+                    <span className="metric-value">Ksh{project.budget.toLocaleString()}</span>
+                  </div>
                   <div className="metric">
                     <span className="metric-label">Stock Cost:</span>
                     <span className="metric-value">Ksh{calculateStockCosts(project.name).toLocaleString()}</span>
@@ -438,6 +428,10 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                   <div className="metric">
                     <span className="metric-label">Labor Cost:</span>
                     <span className="metric-value">Ksh{calculateLaborCosts(project.name).toLocaleString()}</span>
+                  </div>
+                  <div className="metric">
+                    <span className="metric-label">Total Spent:</span>
+                    <span className="metric-value">Ksh{calculateProjectCost(project.name).toLocaleString()}</span>
                   </div>
                   <div className="metric">
                     <span className="metric-label">Remaining:</span>
@@ -509,67 +503,61 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
 
   {/* Removed renderCostAnalysis as it was referenced but not defined */}
 
-      {isAddProjectFormVisible && (
-        <div className="modal-form">
-          <div className="modal-content">
-            <h3>Add New Project</h3>
-            <form onSubmit={handleAddNewProject} className="form-grid">
-              <input type="text" name="name" placeholder="Project Name" value={newProjectData.name} onChange={handleNewProjectChange} required />
-              <input type="number" name="budget" placeholder="Budget" step="0.01" value={newProjectData.budget} onChange={handleNewProjectChange} required />
-              <input type="date" name="startDate" placeholder="Start Date" value={newProjectData.startDate} onChange={handleNewProjectChange} required />
-              <input type="date" name="expectedCompletionDate" placeholder="Expected Completion Date" value={newProjectData.expectedCompletionDate} onChange={handleNewProjectChange} required />
-              <div className="form-actions">
-                <button type="submit" className="btn btn-primary">Add Project</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsAddProjectFormVisible(false)}>Cancel</button>
-              </div>
-            </form>
-          </div>
+      {isAddProjectFormVisible && !editingProject && (
+        <div className="card">
+          <h3>Add New Project</h3>
+          <form onSubmit={handleAddNewProject} className="form-grid">
+            <input type="text" name="name" placeholder="Project Name" value={newProjectData.name} onChange={handleNewProjectChange} required />
+            <input type="number" name="budget" placeholder="Budget" step="0.01" value={newProjectData.budget} onChange={handleNewProjectChange} required />
+            <input type="date" name="startDate" placeholder="Start Date" value={newProjectData.startDate} onChange={handleNewProjectChange} required />
+            <input type="date" name="expectedCompletionDate" placeholder="Expected Completion Date" value={newProjectData.expectedCompletionDate} onChange={handleNewProjectChange} required />
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">Add Project</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsAddProjectFormVisible(false)}>Cancel</button>
+            </div>
+          </form>
         </div>
       )}
 
       {isAddLaborFormVisible && (
-        <div className="modal-form">
-          <div className="modal-content">
-            <h3>Add New Labor Cost</h3>
-            <form onSubmit={handleAddNewLabor} className="form-grid">
-              <select name="projectName" value={newLaborData.projectName} onChange={handleNewLaborChange} required>
-                <option value="">Select Project</option>
-                {projects.map(project => (
-                  <option key={project.id} value={project.name}>{project.name}</option>
-                ))}
-              </select>
-              <input type="text" name="description" placeholder="Description" value={newLaborData.description} onChange={handleNewLaborChange} required />
-              <input type="number" name="amount" placeholder="Amount" step="0.01" value={newLaborData.amount} onChange={handleNewLaborChange} required />
-              <input type="date" name="dateIncurred" placeholder="Date Incurred" value={newLaborData.dateIncurred} onChange={handleNewLaborChange} required />
-              <div className="form-actions">
-                <button type="submit" className="btn btn-primary">Add Labor Cost</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsAddLaborFormVisible(false)}>Cancel</button>
-              </div>
-            </form>
-          </div>
+        <div className="card">
+          <h3>Add New Labor Cost</h3>
+          <form onSubmit={handleAddNewLabor} className="form-grid">
+            <select name="projectName" value={newLaborData.projectName} onChange={handleNewLaborChange} required>
+              <option value="">Select Project</option>
+              {projects.map(project => (
+                <option key={project.id} value={project.name}>{project.name}</option>
+              ))}
+            </select>
+            <input type="text" name="description" placeholder="Description" value={newLaborData.description} onChange={handleNewLaborChange} required />
+            <input type="number" name="amount" placeholder="Amount" step="0.01" value={newLaborData.amount} onChange={handleNewLaborChange} required />
+            <input type="date" name="dateIncurred" placeholder="Date Incurred" value={newLaborData.dateIncurred} onChange={handleNewLaborChange} required />
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">Add Labor Cost</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsAddLaborFormVisible(false)}>Cancel</button>
+            </div>
+          </form>
         </div>
       )}
 
       {editingProject && (
-        <div className="modal-form">
-          <div className="modal-content">
-            <h3>Edit Project</h3>
-            <form onSubmit={handleUpdateProject} className="form-grid">
-              <input type="text" name="name" placeholder="Project Name" value={editingProject.name} onChange={(e) => setEditingProject({...editingProject, name: e.target.value})} required />
-              <input type="number" name="budget" placeholder="Budget" step="0.01" value={editingProject.budget} onChange={(e) => setEditingProject({...editingProject, budget: e.target.value})} required />
-              <input type="date" name="startDate" placeholder="Start Date" value={editingProject.startDate} onChange={(e) => setEditingProject({...editingProject, startDate: e.target.value})} required />
-              <input type="date" name="expectedCompletionDate" placeholder="Expected Completion Date" value={editingProject.expectedCompletionDate} onChange={(e) => setEditingProject({...editingProject, expectedCompletionDate: e.target.value})} required />
-              <select name="status" value={editingProject.status} onChange={(e) => setEditingProject({...editingProject, status: e.target.value})} required>
-                <option value="pending">Pending</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-              </select>
-              <div className="form-actions">
-                <button type="submit" className="btn btn-primary">Update Project</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingProject(null)}>Cancel</button>
-              </div>
-            </form>
-          </div>
+        <div className="card">
+          <h3>Edit Project</h3>
+          <form onSubmit={handleUpdateProject} className="form-grid">
+            <input type="text" name="name" placeholder="Project Name" value={editingProject.name} onChange={(e) => setEditingProject({...editingProject, name: e.target.value})} required />
+            <input type="number" name="budget" placeholder="Budget" step="0.01" value={editingProject.budget} onChange={(e) => setEditingProject({...editingProject, budget: e.target.value})} required />
+            <input type="date" name="startDate" placeholder="Start Date" value={editingProject.startDate} onChange={(e) => setEditingProject({...editingProject, startDate: e.target.value})} required />
+            <input type="date" name="expectedCompletionDate" placeholder="Expected Completion Date" value={editingProject.expectedCompletionDate} onChange={(e) => setEditingProject({...editingProject, expectedCompletionDate: e.target.value})} required />
+            <select name="status" value={editingProject.status} onChange={(e) => setEditingProject({...editingProject, status: e.target.value})} required>
+              <option value="pending">Pending</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+            </select>
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">Update Project</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setEditingProject(null)}>Cancel</button>
+            </div>
+          </form>
         </div>
       )}
     </div>
@@ -621,48 +609,44 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
         </div>
       </div>
 
-      {isAddUserFormVisible && (
-        <div className="modal-form">
-          <div className="modal-content">
-            <h3>Add New User</h3>
-            <form onSubmit={handleAddNewUser} className="form-grid">
-              <input type="text" name="name" placeholder="Full Name" required />
-              <input type="email" name="email" placeholder="Email Address" required />
-              <select name="role" required>
-                <option value="">Select Role</option>
-                <option value="Manager">Manager</option>
-                <option value="Stock Clerk">Stock Clerk</option>
-                <option value="Foreman">Foreman</option>
-                <option value="Regular Staff">Regular Staff</option>
-              </select>
-              <div className="form-actions">
-                <button type="submit" className="btn btn-primary">Add User</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsAddUserFormVisible(false)}>Cancel</button>
-              </div>
-            </form>
-          </div>
+      {isAddUserFormVisible && !editingUser && (
+        <div className="card">
+          <h3>Add New User</h3>
+          <form onSubmit={handleAddNewUser} className="form-grid">
+            <input type="text" name="name" placeholder="Full Name" required />
+            <input type="email" name="email" placeholder="Email Address" required />
+            <select name="role" required>
+              <option value="">Select Role</option>
+              <option value="Manager">Manager</option>
+              <option value="Stock Clerk">Stock Clerk</option>
+              <option value="Foreman">Foreman</option>
+              <option value="Regular Staff">Regular Staff</option>
+            </select>
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">Add User</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsAddUserFormVisible(false)}>Cancel</button>
+            </div>
+          </form>
         </div>
       )}
 
       {editingUser && (
-        <div className="modal-form">
-          <div className="modal-content">
-            <h3>Edit User</h3>
-            <form onSubmit={handleUpdateUser} className="form-grid">
-              <input type="text" name="name" placeholder="Full Name" value={editingUser.name} onChange={(e) => setEditingUser({...editingUser, name: e.target.value})} required />
-              <input type="email" name="email" placeholder="Email Address" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} required />
-              <select name="role" value={editingUser.role} onChange={(e) => setEditingUser({...editingUser, role: e.target.value})} required>
-                <option value="Manager">Manager</option>
-                <option value="Stock Clerk">Stock Clerk</option>
-                <option value="Foreman">Foreman</option>
-                <option value="Regular Staff">Regular Staff</option>
-              </select>
-              <div className="form-actions">
-                <button type="submit" className="btn btn-primary">Update User</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingUser(null)}>Cancel</button>
-              </div>
-            </form>
-          </div>
+        <div className="card">
+          <h3>Edit User</h3>
+          <form onSubmit={handleUpdateUser} className="form-grid">
+            <input type="text" name="name" placeholder="Full Name" value={editingUser.name} onChange={(e) => setEditingUser({...editingUser, name: e.target.value})} required />
+            <input type="email" name="email" placeholder="Email Address" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} required />
+            <select name="role" value={editingUser.role} onChange={(e) => setEditingUser({...editingUser, role: e.target.value})} required>
+              <option value="Manager">Manager</option>
+              <option value="Stock Clerk">Stock Clerk</option>
+              <option value="Foreman">Foreman</option>
+              <option value="Regular Staff">Regular Staff</option>
+            </select>
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">Update User</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setEditingUser(null)}>Cancel</button>
+            </div>
+          </form>
         </div>
       )}
     </div>
@@ -693,7 +677,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
           </div>
           
           <button className="btn btn-primary" onClick={downloadReport}>
-            <FaDownload /> <span>Download CSV</span>
+            <FaDownload /> Download CSV
           </button>
         </div>
 
@@ -1009,10 +993,9 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
           </table>
         </div>
       </div>
+      
       <div className="card">
-        <div className="card-header">
-          <h3>Add New Item</h3>
-        </div>
+        <h3>Add New Item</h3>
         <form onSubmit={handleAddNewItem} className="form-grid">
           <input type="text" name="name" placeholder="Item Name" required />
           <input type="number" name="quantity" placeholder="Quantity" required />
@@ -1032,85 +1015,1011 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     </div>
   );
 
-  return (
-    <div className={`admin-dashboard ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="sidebar-logo">
-            <img src={logo} alt="Logo" />
-            {isSidebarOpen && <h1>Admin</h1>}
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'dashboard':
+        return renderDashboard();
+      case 'stock':
+        return renderStockManagement();
+      case 'requisitions':
+        return renderRequisitions();
+      case 'projects':
+        return renderProjectManagement();
+      case 'users':
+        return renderUsers();
+      case 'reports':
+        return renderReports();
+      case 'notifications':
+        return renderNotifications();
+      default:
+        return renderDashboard();
+    }
+  };
+
+  const renderNotifications = () => {
+    if (selectedNotification) {
+      return renderNotificationDetails(selectedNotification);
+    }
+
+    return (
+      <div className="section-content">
+        <h3>Notifications</h3>
+        <div className="summary-cards">
+          <div className="summary-card clickable" onClick={() => setSelectedNotification('low-stock')}>
+            <div className="summary-icon"><FaBox /></div>
+            <div className="summary-content">
+              <h4>Low Stock</h4>
+              <p className="summary-value">{stocks.filter(stock => stock.quantity < 20).length}</p>
+            </div>
           </div>
-          <button className="sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            <FaBars />
+          <div className="summary-card clickable" onClick={() => setSelectedNotification('pending-requisitions')}>
+            <div className="summary-icon"><FaClipboardList /></div>
+            <div className="summary-content">
+              <h4>Pending Requisitions</h4>
+              <p className="summary-value">{requisitions.filter(req => req.status === 'pending').length}</p>
+            </div>
+          </div>
+          <div className="summary-card clickable" onClick={() => setSelectedNotification('overdue-approvals')}>
+            <div className="summary-icon"><FaBell /></div>
+            <div className="summary-content">
+              <h4>Overdue Approvals</h4>
+              <p className="summary-value">1</p>
+            </div>
+          </div>
+          <div className="summary-card clickable" onClick={() => setSelectedNotification('urgent-requisitions')}>
+            <div className="summary-icon"><FaBell /></div>
+            <div className="summary-content">
+              <h4>Urgent Requisitions</h4>
+              <p className="summary-value">1</p>
+            </div>
+          </div>
+          <div className="summary-card clickable" onClick={() => setSelectedNotification('pending-tasks')}>
+            <div className="summary-icon"><FaBell /></div>
+            <div className="summary-content">
+              <h4>Pending Tasks</h4>
+              <p className="summary-value">1</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderNotificationDetails = (notificationType) => {
+    let title = '';
+    let data = [];
+    let columns = [];
+    let columnMapping = {};
+
+    switch (notificationType) {
+      case 'low-stock':
+        title = 'Low Stock Items';
+        columns = ['Item', 'Quantity', 'Supplier'];
+        columnMapping = { 'Item': 'name', 'Quantity': 'quantity', 'Supplier': 'supplier' };
+        data = stocks.filter(stock => stock.quantity < 20);
+        break;
+      case 'pending-requisitions':
+        title = 'Pending Requisitions';
+        columns = ['Item', 'Quantity', 'Project', 'Date'];
+        columnMapping = { 'Item': 'item', 'Quantity': 'quantity', 'Project': 'project', 'Date': 'requestDate' };
+        data = requisitions.filter(req => req.status === 'pending');
+        break;
+      case 'overdue-approvals':
+        title = 'Overdue Approvals';
+        columns = ['Item', 'Project', 'Date'];
+        columnMapping = { 'Item': 'item', 'Project': 'project', 'Date': 'date' };
+        data = [{ item: 'Approval for XX', project: 'Project Y', date: '2025-08-10' }];
+        break;
+      case 'urgent-requisitions':
+        title = 'Urgent Requisitions';
+        columns = ['Item', 'Project', 'Date'];
+        columnMapping = { 'Item': 'item', 'Project': 'project', 'Date': 'date' };
+        data = [{ item: 'Urgent requisition for YY', project: 'Project Z', date: '2025-08-15' }];
+        break;
+      case 'pending-tasks':
+        title = 'Pending Tasks';
+        columns = ['Task', 'Due Date'];
+        columnMapping = { 'Task': 'task', 'Due Date': 'dueDate' };
+        data = [{ task: 'Pending task: ZZ', dueDate: '2025-08-20' }];
+        break;
+      default:
+        break;
+    }
+
+    return (
+      <div className="card">
+        <div className="card-header">
+          <h3>{title}</h3>
+          <button className="btn btn-danger" onClick={() => setSelectedNotification(null)}>Close</button>
+        </div>
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                {columns.map(col => <th key={col}>{col}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((item, index) => (
+                <tr key={index}>
+                  {columns.map(col => <td key={col}>{item[columnMapping[col]]}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className={`dashboard-container ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
+      <style jsx>{`
+        /* ===== MODERN DASHBOARD TEMPLATE ===== */
+        
+        /* Reset and Base Styles */
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        html, body, #root {
+          height: 100%;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          line-height: 1.6;
+          color: #1a1a1a;
+          background: #f8fafc;
+        }
+
+        /* Layout Container */
+        .dashboard-container {
+          display: flex;
+          height: 100vh;
+          width: 100%;
+          background: #f8fafc;
+          overflow: hidden;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+          width: 280px;
+          background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+          color: #f1f5f9;
+          display: flex;
+          flex-direction: column;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+          z-index: 1000;
+          position: relative;
+        }
+
+        .sidebar.closed {
+          transform: translateX(-100%);
+        }
+
+        /* Hide native scrollbar while retaining scroll functionality */
+        .sidebar {
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* IE 10+ */
+        }
+        .sidebar::-webkit-scrollbar { /* WebKit */
+          width: 0;
+          height: 0;
+        }
+
+        .sidebar-collapsed {
+          width: 60px;
+        }
+
+        .sidebar-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px;
+          background-color: #1a237e;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          white-space: nowrap;
+        }
+
+        .sidebar-header h2 {
+          margin: 0;
+          font-size: 1.5rem;
+        }
+
+        .toggle-btn {
+          background: none;
+          border: none;
+          color: #fff;
+          cursor: pointer;
+          font-size: 1.2rem;
+          padding: 5px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .sidebar-nav ul {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .sidebar-nav li {
+          padding: 15px 20px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          font-size: 1.1rem;
+          transition: background-color 0.2s ease, color 0.2s ease;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .sidebar-nav li:hover,
+        .sidebar-nav li.active {
+          background-color: #2c387e;
+          color: #ffeb3b; /* Yellow accent for active/hover */
+        }
+
+        .sidebar-nav li svg {
+          font-size: 1.2rem;
+          min-width: 24px;
+        }
+
+        .sidebar-collapsed .sidebar-header h2,
+        .sidebar-collapsed .sidebar-nav span {
+          display: none;
+        }
+
+        /* Main Content Area */
+        .main-content {
+          margin-left: 250px;
+          flex-grow: 1;
+          padding: 20px;
+          transition: margin-left 0.3s ease;
+          height: 100vh; /* fill viewport */
+          overflow: auto; /* internal scroll only */
+          -ms-overflow-style: none; /* IE / Edge */
+          scrollbar-width: none; /* Firefox */
+        }
+        .main-content::-webkit-scrollbar { display: none; }
+
+        .sidebar-collapsed + .main-content {
+          margin-left: 60px;
+        }
+
+        /* Header */
+        .main-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 15px 20px;
+          background-color: #fff;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+          margin-bottom: 20px;
+          gap: 15px; /* Add spacing between elements */
+        }
+
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+
+        .menu-btn {
+          background: #1a237e;
+          color: #fff;
+          border: none;
+          padding: 12px 15px;
+          font-size: 1.3rem;
+          cursor: pointer;
+          border-radius: 8px;
+          display: flex; /* Always visible when controlled by React state */
+          align-items: center;
+          justify-content: center;
+          min-width: 48px;
+          min-height: 48px;
+          transition: all 0.3s ease;
+          box-shadow: 0 2px 8px rgba(26, 35, 126, 0.3);
+          position: relative;
+          z-index: 1000;
+        }
+
+        /* Add visual emphasis when sidebar is closed */
+        .sidebar.closed ~ .main-content .menu-btn {
+          background: #1565c0;
+          box-shadow: 0 3px 10px rgba(21, 101, 192, 0.4);
+          border: 2px solid #e3f2fd;
+        }
+
+        .menu-btn:hover {
+          background: #283593;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(26, 35, 126, 0.4);
+        }
+
+        .menu-btn:active {
+          transform: translateY(0);
+          box-shadow: 0 2px 6px rgba(26, 35, 126, 0.3);
+        }
+
+        /* Responsive Breakpoints */
+        /* Tablet and Small Desktop */
+        @media (max-width: 1200px) {
+          .main-content {
+            padding: 15px;
+          }
+          
+          .main-header {
+            padding: 12px 15px;
+          }
+        }
+
+        /* Mobile and Tablet Portrait */
+        @media (max-width: 992px) {
+          .sidebar {
+            transform: translateX(-100%);
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+            z-index: 1001;
+          }
+
+          .sidebar:not(.closed) {
+            transform: translateX(0);
+          }
+
+          .main-content {
+            margin-left: 0 !important;
+            padding: 10px;
+          }
+
+          .main-header {
+            flex-direction: row;
+            gap: 10px;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+          }
+          
+          .header-left {
+            gap: 10px;
+          }
+          
+          .menu-btn {
+            min-width: 42px;
+            min-height: 42px;
+            padding: 10px 12px;
+          }
+        }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+          .main-content {
+            padding: 8px;
+          }
+
+          .main-header {
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+          }
+          
+          .header-left {
+            gap: 8px;
+          }
+          
+          .menu-btn {
+            min-width: 40px;
+            min-height: 40px;
+            padding: 8px 10px;
+            font-size: 1.1rem;
+          }
+
+          .sidebar-header {
+            padding: 15px;
+          }
+
+          .sidebar-header h2 {
+            font-size: 1.2rem;
+          }
+
+          .sidebar-nav li {
+            padding: 12px 15px;
+            font-size: 1rem;
+          }
+        }
+
+        /* Small Mobile */
+        @media (max-width: 480px) {
+          .main-content {
+            padding: 5px;
+          }
+
+          .main-header {
+            padding: 5px 8px;
+            margin-bottom: 10px;
+          }
+
+          .sidebar {
+            width: 100vw;
+            max-width: 280px;
+          }
+
+          .sidebar-header {
+            padding: 12px;
+          }
+
+          .sidebar-nav li {
+            padding: 10px 12px;
+            font-size: 0.9rem;
+          }
+        }
+
+          .search-bar {
+            max-width: none; /* Allow search bar to take full width on small screens */
+          }
+        }
+
+        .search-bar {
+          display: flex;
+          align-items: center;
+          background-color: #f7f7f7;
+          border-radius: 50px;
+          padding: 8px 15px;
+          width: 100%;
+          max-width: 400px;
+        }
+
+        .search-bar input {
+          border: none;
+          background: transparent;
+          width: 100%;
+          font-size: 1rem;
+          outline: none;
+          margin-left: 10px;
+        }
+
+        .search-icon {
+          color: #aaa;
+        }
+
+        .search-icon {
+          color: #aaa;
+        }
+
+        /* Dashboard Content */
+        .dashboard-content {
+          padding: 20px 0;
+        }
+
+        .summary-cards {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 20px;
+        }
+
+        .summary-card {
+          background-color: #fff;
+          padding: 25px;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 20px;
+        }
+
+        /* Mobile card responsive adjustments */
+        @media (max-width: 768px) {
+          .summary-cards {
+            grid-template-columns: 1fr;
+            gap: 15px;
+          }
+
+          .summary-card {
+            padding: 20px;
+            gap: 15px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .summary-cards {
+            gap: 10px;
+          }
+
+          .summary-card {
+            padding: 15px;
+            gap: 10px;
+          }
+        }
+
+        .summary-icon {
+          background-color: #e3f2fd;
+          color: #1a237e;
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.5rem;
+        }
+
+        .summary-content h4 {
+          margin: 0;
+          color: #555;
+          font-weight: 500;
+        }
+
+        .summary-value {
+          margin: 5px 0 0;
+          font-size: 2rem;
+          font-weight: 600;
+          color: #1a237e;
+        }
+
+        /* General Sections */
+        .section-content {
+          padding: 20px 0;
+        }
+
+        .card {
+          background-color: #fff;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+          padding: 25px;
+          margin-bottom: 20px;
+        }
+
+        .card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        }
+
+        .card h3 {
+          margin: 0;
+          font-size: 1.5rem;
+          color: #1a237e;
+        }
+
+        /* Buttons */
+        .btn {
+          padding: 10px 20px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          font-size: 1rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .btn-primary {
+          background-color: #1a237e;
+          color: #fff;
+        }
+
+        .btn-primary:hover {
+          background-color: #2c387e;
+        }
+
+        .btn-secondary {
+          background-color: #e0e0e0;
+          color: #555;
+        }
+
+        .btn-secondary:hover {
+          background-color: #d5d5d5;
+        }
+
+        .btn-danger {
+          background-color: #e53935;
+          color: #fff;
+        }
+
+        .btn-danger:hover {
+          background-color: #d32f2f;
+        }
+
+        .btn-success {
+          background-color: #43a047;
+          color: #fff;
+        }
+
+        .btn-success:hover {
+          background-color: #388e3c;
+        }
+
+        .btn-sm {
+          padding: 6px 12px;
+          font-size: 0.875rem;
+        }
+
+        /* Tables */
+        .table-container {
+          overflow-x: auto;
+          margin: 0 -5px; /* Compensate for mobile padding */
+        }
+
+        .data-table {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 600px; /* Ensure table doesn't get too cramped */
+        }
+
+        .data-table th, .data-table td {
+          padding: 15px;
+          text-align: left;
+          border-bottom: 1px solid #e0e0e0;
+          white-space: nowrap;
+        }
+
+        .data-table th {
+          background-color: #fafafa;
+          font-weight: 600;
+          color: #555;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+
+        .data-table tbody tr:hover {
+          background-color: #f5f5f5;
+        }
+
+        /* Mobile table adjustments */
+        @media (max-width: 768px) {
+          .data-table {
+            min-width: 500px;
+          }
+          
+          .data-table th, .data-table td {
+            padding: 8px 6px;
+            font-size: 0.85rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .table-container {
+            margin: 0 -8px;
+          }
+          
+          .data-table {
+            min-width: 400px;
+          }
+          
+          .data-table th, .data-table td {
+            padding: 6px 4px;
+            font-size: 0.8rem;
+          }
+        }
+
+        .clickable {
+          cursor: pointer;
+          color: #1a237e;
+          font-weight: 500;
+          transition: color 0.2s ease;
+        }
+
+        .clickable:hover {
+          text-decoration: underline;
+        }
+
+        /* Status Badges */
+        .status-badge {
+          padding: 5px 12px;
+          border-radius: 50px;
+          font-weight: 600;
+          font-size: 0.875rem;
+          text-transform: capitalize;
+        }
+
+        .status-pending {
+          background-color: #fff3e0;
+          color: #ff9800;
+        }
+
+        .status-approved {
+          background-color: #e8f5e9;
+          color: #4caf50;
+        }
+
+        .status-fulfilled, .status-active {
+          background-color: #e3f2fd;
+          color: #2196f3;
+        }
+
+        .status-rejected {
+          background-color: #ffebee;
+          color: #e53935;
+        }
+
+        .status-pending {
+          background-color: #fff3e0;
+          color: #ff9800;
+        }
+
+        .status-warning {
+          background-color: #fff3e0;
+          color: #ff9800;
+        }
+
+        .status-normal {
+          background-color: #e8f5e9;
+          color: #4caf50;
+        }
+
+        /* Forms */
+        .form-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 15px;
+        }
+
+        .form-grid input, .form-grid select {
+          padding: 12px;
+          border: 1px solid #ccc;
+          border-radius: 5px;
+          font-size: 1rem;
+        }
+
+        .form-actions {
+          display: flex;
+          gap: 10px;
+          margin-top: 10px;
+        }
+
+        /* Reports Section */
+        .reports-controls {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+        }
+
+        .control-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .report-summary {
+          display: flex;
+          gap: 20px;
+          flex-wrap: wrap;
+          margin-bottom: 20px;
+          padding-bottom: 20px;
+          border-bottom: 1px solid #e0e0e0;
+        }
+
+        .summary-stat {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .stat-label {
+          font-weight: 500;
+          color: #888;
+        }
+
+        .stat-value {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #1a237e;
+        }
+
+        /* Project Cost Analysis */
+        .project-metrics {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 25px;
+          margin-bottom: 20px;
+          padding-bottom: 20px;
+          border-bottom: 1px solid #e0e0e0;
+          width: 100%;
+          justify-content: space-around;
+        }
+
+        .metric {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .metric-label {
+          font-weight: 500;
+          color: #888;
+        }
+
+        .metric-value {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #1a237e;
+        }
+
+        .progress-bar {
+          background-color: #e0e0e0;
+          border-radius: 50px;
+          height: 8px;
+          width: 100px;
+          overflow: hidden;
+        }
+
+        .progress-fill {
+          background-color: #4caf50;
+          height: 100%;
+          transition: width 0.3s ease;
+        }
+
+        .chart-container {
+          margin-top: 20px;
+        }
+
+        .chart-bar-container {
+          display: flex;
+          margin-bottom: 10px;
+        }
+
+        .chart-bar {
+          height: 30px;
+          line-height: 30px;
+          color: white;
+          padding-left: 10px;
+          border-radius: 5px;
+        }
+
+        .chart-label {
+          font-weight: bold;
+        }
+
+        .pie-chart-container {
+          display: flex;
+          align-items: center;
+          margin-top: 20px;
+        }
+
+        .pie-chart {
+          width: 150px;
+          height: 150px;
+          border-radius: 50%;
+        }
+
+        .legend {
+          margin-left: 20px;
+        }
+
+        /* Mobile chart responsive adjustments */
+        @media (max-width: 768px) {
+          .pie-chart-container {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+
+          .legend {
+            margin-left: 0;
+            margin-top: 15px;
+          }
+
+          .chart-bar-container {
+            flex-direction: column;
+            gap: 5px;
+          }
+
+          .chart-bar {
+            height: 25px;
+            line-height: 25px;
+            padding-left: 8px;
+            font-size: 0.875rem;
+          }
+        }
+
+        /* Mobile overlay when sidebar is open */
+        .sidebar-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 999;
+          display: none;
+        }
+
+        @media (max-width: 992px) {
+          .sidebar-overlay.active {
+            display: block;
+          }
+        }
+
+        .legend-color {
+          display: inline-block;
+          width: 20px;
+          height: 20px;
+          margin-right: 10px;
+          vertical-align: middle;
+        }
+      `}</style>
+
+      {/* Mobile overlay */}
+      <div 
+        className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`}
+        onClick={() => setIsSidebarOpen(false)}
+      ></div>
+
+      <aside className={`sidebar ${isSidebarOpen ? '' : 'closed'}`}>
+        <div className="sidebar-header">
+          {isSidebarOpen && (
+            <>
+              <img src={logo} alt="Collyer International Logo" style={{width: '120px', height: 'auto', marginRight: '10px'}} />
+              <h2>{currentUserData ? currentUserData.name : 'Admin'}</h2>
+            </>
+          )}
+          <button
+            aria-label="Close menu"
+            className="toggle-btn"
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            ×
           </button>
         </div>
         <nav className="sidebar-nav">
           <ul>
-            <li>
-              <a href="#" className={activeSection === 'dashboard' ? 'active' : ''} onClick={() => setActiveSection('dashboard')}>
-                <FaHome className="nav-icon" />
-                {isSidebarOpen && 'Dashboard'}
-              </a>
+            <li className={activeSection === 'dashboard' ? 'active' : ''} onClick={() => setActiveSection('dashboard')}>
+              <FaHome /> {isSidebarOpen && <span>Dashboard</span>}
             </li>
-            <li>
-              <a href="#" className={activeSection === 'projects' ? 'active' : ''} onClick={() => setActiveSection('projects')}>
-                <FaProjectDiagram className="nav-icon" />
-                {isSidebarOpen && 'Projects'}
-              </a>
+            <li className={activeSection === 'stock' ? 'active' : ''} onClick={() => setActiveSection('stock')}>
+              <FaBox /> {isSidebarOpen && <span>Stock Management</span>}
             </li>
-            <li>
-              <a href="#" className={activeSection === 'requisitions' ? 'active' : ''} onClick={() => setActiveSection('requisitions')}>
-                <FaClipboardList className="nav-icon" />
-                {isSidebarOpen && 'Requisitions'}
-              </a>
+            <li className={activeSection === 'requisitions' ? 'active' : ''} onClick={() => setActiveSection('requisitions')}>
+              <FaClipboardList /> {isSidebarOpen && <span>Requisitions</span>}
             </li>
-            <li>
-              <a href="#" className={activeSection === 'stock' ? 'active' : ''} onClick={() => setActiveSection('stock')}>
-                <FaBox className="nav-icon" />
-                {isSidebarOpen && 'Stock'}
-              </a>
+            <li className={activeSection === 'projects' ? 'active' : ''} onClick={() => setActiveSection('projects')}>
+              <FaProjectDiagram /> {isSidebarOpen && <span>Project Management</span>}
             </li>
-            <li>
-              <a href="#" className={activeSection === 'users' ? 'active' : ''} onClick={() => setActiveSection('users')}>
-                <FaUsers className="nav-icon" />
-                {isSidebarOpen && 'Users'}
-              </a>
+            <li className={activeSection === 'users' ? 'active' : ''} onClick={() => setActiveSection('users')}>
+              <FaUsers /> {isSidebarOpen && <span>User Management</span>}
             </li>
-            <li>
-              <a href="#" className={activeSection === 'reports' ? 'active' : ''} onClick={() => setActiveSection('reports')}>
-                <FaChartLine className="nav-icon" />
-                {isSidebarOpen && 'Reports'}
-              </a>
+            <li className={activeSection === 'reports' ? 'active' : ''} onClick={() => setActiveSection('reports')}>
+              <FaChartLine /> {isSidebarOpen && <span>Reports</span>}
+            </li>
+            <li className={activeSection === 'notifications' ? 'active' : ''} onClick={() => setActiveSection('notifications')}>
+              <FaBell /> {isSidebarOpen && <span>Notifications</span>}
+            </li>
+            <li onClick={handleLogout}>
+              <FaSignOutAlt /> {isSidebarOpen && <span>Logout</span>}
             </li>
           </ul>
         </nav>
-        <div className="sidebar-footer">
-          <button className="logout-button" onClick={handleLogout}>
-            <FaSignOutAlt className="nav-icon" />
-            {isSidebarOpen && 'Logout'}
-          </button>
-        </div>
       </aside>
 
       <main className="main-content">
         <header className="main-header">
-          <h1>{activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</h1>
-          <div className="header-actions">
-            <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-            <div className="user-profile">
-              <img src={logo} alt="User" />
-              <span>{currentUserData?.name}</span>
-            </div>
+          <div className="header-left">
+            <button 
+              className="menu-btn" 
+              onClick={() => setIsSidebarOpen(prev => !prev)}
+              aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+            >
+              {isSidebarOpen ? <FaTimes /> : <FaBars />}
+            </button>
           </div>
+          <SearchBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            placeholder="Search across stocks, requisitions, projects, and users..."
+          />
         </header>
-        <div className="content-wrapper">
-          {activeSection === 'dashboard' && renderDashboard()}
-          {activeSection === 'projects' && renderProjectManagement()}
-          {activeSection === 'users' && renderUsers()}
-          {activeSection === 'reports' && renderReports()}
-          {activeSection === 'requisitions' && renderRequisitions()}
-          {activeSection === 'stock' && renderStockManagement()}
-        </div>
+        {renderContent()}
       </main>
     </div>
   );
