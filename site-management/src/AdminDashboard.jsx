@@ -49,6 +49,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   const [isAddLaborFormVisible, setIsAddLaborFormVisible] = useState(false);
   // Removed selectedProjectForAnalysis state (unused after removing cost analysis block)
   const [showProjectDetailsFor, setShowProjectDetailsFor] = useState(null);
+  const [attendanceReports, setAttendanceReports] = useState([]);
   
 
   useEffect(() => {
@@ -96,6 +97,17 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     };
 
     fetchLaborCosts();
+  }, []);
+
+  useEffect(() => {
+    const fetchAttendanceReports = async () => {
+      const reportsCollection = collection(db, 'attendanceReports');
+      const reportSnapshot = await getDocs(reportsCollection);
+      const reportList = reportSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAttendanceReports(reportList);
+    };
+
+    fetchAttendanceReports();
   }, []);
 
   
@@ -367,6 +379,11 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
           totalCost: filteredReqs.reduce((sum, r) => sum + (r.quantity * r.unitCost), 0)
         }
       };
+    } else if (reportType === 'attendance') {
+      return {
+        title: `Attendance Report - ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)}`,
+        data: attendanceReports
+      };
     } else { // projects
       return {
         title: `Projects Report - ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)}`,
@@ -633,6 +650,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                 <option value="Manager">Manager</option>
                 <option value="Stock Clerk">Stock Clerk</option>
                 <option value="Foreman">Foreman</option>
+                <option value="Gate Officer">Gate Officer</option>
                 <option value="Regular Staff">Regular Staff</option>
               </select>
               <div className="form-actions">
@@ -655,6 +673,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                 <option value="Manager">Manager</option>
                 <option value="Stock Clerk">Stock Clerk</option>
                 <option value="Foreman">Foreman</option>
+                <option value="Gate Officer">Gate Officer</option>
                 <option value="Regular Staff">Regular Staff</option>
               </select>
               <div className="form-actions">
@@ -680,6 +699,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
               <option value="stock">Stock Report</option>
               <option value="requisitions">Requisitions Report</option>
               <option value="projects">Projects Report</option>
+              <option value="attendance">Attendance Report</option>
             </select>
           </div>
           
@@ -855,6 +875,37 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                           <span className={`status-badge status-${project.status}`}>
                             {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
                           </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {reportType === 'attendance' && (
+            <div className="report-content">
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Report Name</th>
+                      <th>Type</th>
+                      <th>Uploaded At</th>
+                      <th>Download</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attendanceReports.map(report => (
+                      <tr key={report.id}>
+                        <td>{report.name}</td>
+                        <td>{report.type}</td>
+                        <td>{report.uploadedAt ? new Date(report.uploadedAt.seconds * 1000).toLocaleString() : 'N/A'}</td>
+                        <td>
+                          <a href={report.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">
+                            <FaDownload /> Download
+                          </a>
                         </td>
                       </tr>
                     ))}

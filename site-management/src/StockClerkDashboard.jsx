@@ -3,6 +3,7 @@ import { FaBox, FaClipboardList, FaHome, FaSignOutAlt, FaBars, FaSearch, FaTimes
 import { db } from './firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import logo from './assets/logo.jpeg';
+import './AdminDashboard.css';
 
 
 
@@ -31,9 +32,31 @@ export default function StockClerkDashboard() {
   const [newDelivery, setNewDelivery] = useState({ item: '', quantity: 0, supplier: '' });
   const [damagedStockDetails, setDamagedStockDetails] = useState({ item: '', quantity: 0, reason: '' });
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc');
+  // const [sortOrder, setSortOrder] = useState('asc');
   const [filteredStocks, setFilteredStocks] = useState([]);
   const [selectedProject, setSelectedProject] = useState('');
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Run on initial load
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleNavClick = (section) => {
+    setActiveSection(section);
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  };
 
   const handleUpdateRequisitionStatus = (id, status) => {
     // TODO: Implement the actual logic to update the requisition status in Firestore
@@ -487,17 +510,18 @@ export default function StockClerkDashboard() {
           { item: 'Bricks', totalIn: 500, totalOut: 200, netChange: 300 },
         ];
         break;
-      case 'history':
+      case 'history': {
         columns = ['Item', 'Quantity', 'Type', 'Date', 'Details'];
         const stockMovementHistory = [
-          ...mockRequisitions.map(req => ({ item: req.item, quantity: req.quantity, type: 'out', date: req.requestDate, details: `Project: ${req.project}` })),
-          ...mockDeliveries.map(del => ({ item: del.item, quantity: del.quantity, type: 'in', date: del.date, details: '' })),
+          ...requisitions.map(req => ({ item: req.items, quantity: req.quantity, type: 'out', date: req.date, details: `Project: ${req.projectName}` })),
+          ...deliveries.map(del => ({ item: del.item, quantity: del.quantity, type: 'in', date: del.date, details: '' })),
           ...issuedStock.map(issue => ({ item: issue.item, quantity: issue.quantity, type: 'issued', date: issue.date, details: `To: ${issue.issuedTo}` })),
           ...damagedReturnedStock.map(dr => ({ item: dr.item, quantity: dr.quantity, type: dr.reason, date: dr.date, details: '' })),
         ];
         // Sort by date, newest first
         data = stockMovementHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
         break;
+      }
       default:
         break;
     }
@@ -535,540 +559,107 @@ export default function StockClerkDashboard() {
   );
 
   return (
-    <div className={`dashboard-container ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
-       <style jsx>{`
-        /* General Body and Layout */
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-          margin: 0;
-          padding: 0;
-          background-color: #f0f2f5;
-          color: #333;
-        }
-
-        .dashboard-container {
-          display: flex;
-          min-height: 100vh;
-
-        }
-
-        /* Sidebar */
-        .sidebar {
-          width: 250px;
-          background-color: #1a237e; /* Deep blue */
-          color: #fff;
-          display: flex;
-          flex-direction: column;
-          transition: width 0.3s ease;
-          position: fixed;
-          height: 100%;
-          overflow-y: auto;
-          z-index: 1000;
-        }
-
-        .sidebar-collapsed {
-          width: 60px;
-        }
-
-        .sidebar-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 20px;
-          background-color: #1a237e;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          white-space: nowrap;
-        }
-
-
-        
-        .sidebar-header h2 {
-          margin: 0;
-          font-size: 1.5rem;
-        }
-
-        .toggle-btn {
-          background: none;
-          border: none;
-          color: #fff;
-          cursor: pointer;
-          font-size: 1.2rem;
-          padding: 5px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .sidebar-nav ul {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          flex-direction: column; /* Arrange items top-to-bottom */
-        }
-
-        .sidebar-nav li {
-          padding: 15px 20px;
-          cursor: pointer;
-          display: flex;
-          flex-direction: row; /* Arrange items top-to-bottom */
-          align-items: center; /* Center items horizontally */
-          font-size: 1.1rem;
-          gap:5px;
-          transition: background-color 0.2s ease, color 0.2s ease;
-        }
-
-        .sidebar-nav li:hover,
-        .sidebar-nav li.active {
-          background-color: #2c387e;
-          color: #ffeb3b; /* Yellow accent for active/hover */
-        }
-
-        .sidebar-nav li svg {
-          font-size: 1.2rem;
-          min-width: 24px;
-          display: block; /* Ensure icon takes its own line */
-          margin-bottom: 5px; /* Add some space below the icon */
-        }
-
-        .sidebar-nav li span {
-          display: block; /* Ensure text takes its own line */
-        }
-
-        .sidebar-collapsed .sidebar-header h2,
-        .sidebar-collapsed .sidebar-nav span {
-          display: none;
-        }
-
-        /* Main Content Area */
-        .main-content {
-          margin-left: 250px;
-          flex-grow: 1;
-          padding: 20px;
-          transition: margin-left 0.3s ease;
-        }
-
-        .sidebar-collapsed + .main-content {
-          margin-left: 60px;
-        }
-
-        /* Header */
-        .main-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 15px 20px;
-          background-color: #fff;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-          margin-bottom: 20px;
-        }
-
-        .menu-btn {
-          background: none;
-          border: none;
-          font-size: 1.5rem;
-          cursor: pointer;
-          color: #555;
-          display: none;
-        }
-
-        @media (max-width: 768px) {
-          .sidebar {
-            left: -250px;
-            transition: left 0.3s ease;
-          }
-
-          .sidebar-collapsed {
-            left: 0;
-            width: 250px;
-          }
-
-          .main-content {
-            margin-left: 0;
-          }
-
-          .menu-btn {
-            display: block;
-          }
-        }
-
-        .search-bar {
-          display: flex;
-          align-items: center;
-          background-color: #f7f7f7;
-          border-radius: 50px;
-          padding: 8px 15px;
-          width: 100%;
-          max-width: 400px;
-        }
-
-        .search-bar input {
-          border: none;
-          background: transparent;
-          width: 100%;
-          font-size: 1rem;
-          outline: none;
-          margin-left: 10px;
-        }
-
-        .search-icon {
-          color: #aaa;
-        }
-
-        /* Dashboard Content */
-        .dashboard-content {
-          padding: 20px 0;
-        }
-
-        .summary-cards {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 20px;
-        }
-
-        .summary-card {
-          background-color: #fff;
-          padding: 25px;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-          display: flex;
-          align-items: center;
-          gap: 20px;
-        }
-
-        .summary-icon {
-          background-color: #e3f2fd;
-          color: #1a237e;
-          width: 60px;
-          height: 60px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.5rem;
-        }
-
-        .summary-content h4 {
-          margin: 0;
-          color: #555;
-          font-weight: 500;
-        }
-
-        .summary-value {
-          margin: 5px 0 0;
-          font-size: 2rem;
-          font-weight: 600;
-          color: #1a237e;
-        }
-
-        /* General Sections */
-        .section-content {
-          padding: 20px 0;
-        }
-
-        .card {
-          background-color: #fff;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-          padding: 25px;
-          margin-bottom: 20px;
-        }
-
-        .card-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-        }
-
-        .card h3 {
-          margin: 0;
-          font-size: 1.5rem;
-          color: #1a237e;
-        }
-
-        /* Tables */
-        .table-container {
-          overflow-x: auto;
-        }
-
-        .data-table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-
-        .data-table th, .data-table td {
-          padding: 15px;
-          text-align: left;
-          border-bottom: 1px solid #e0e0e0;
-        }
-
-        .data-table th {
-          background-color: #fafafa;
-          font-weight: 600;
-          color: #555;
-        }
-
-        .data-table tbody tr:hover {
-          background-color: #f5f5f5;
-        }
-
-        /* Status Badges */
-        .status-badge {
-          padding: 5px 12px;
-          border-radius: 50px;
-          font-weight: 600;
-          font-size: 0.875rem;
-          text-transform: capitalize;
-        }
-
-        .status-warning {
-          background-color: #fff3e0;
-          color: #ff9800;
-        }
-
-        .status-normal {
-          background-color: #e8f5e9;
-          color: #4caf50;
-        }
-
-        .report-options {
-          display: flex;
-          gap: 10px;
-          margin-bottom: 20px;
-        }
-
-        .report-content {
-          margin-top: 20px;
-        }
-
-        .quick-action-buttons {
-          display: flex;
-          flex-direction: column; /* Arrange buttons top-to-bottom */
-          gap: 10px;
-          margin-top: 20px;
-        }
-
-        /* Modal Styles */
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: rgba(0, 0, 0, 0.6);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-        }
-
-        .modal-content {
-          background-color: #fff;
-          padding: 30px;
-          border-radius: 10px;
-          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-          width: 90%;
-          max-width: 500px;
-          position: relative;
-        }
-
-        .modal-content h3 {
-          margin-top: 0;
-          margin-bottom: 20px;
-          color: #1a237e;
-          font-size: 1.8rem;
-        }
-
-        .form-grid {
-          display: grid;
-          gap: 15px;
-        }
-
-        .form-grid label {
-          font-weight: 600;
-          color: #555;
-        }
-
-        .form-grid input[type="text"],
-        .form-grid input[type="number"],
-        .form-grid select {
-          width: 100%;
-          padding: 10px;
-          border: 1px solid #ddd;
-          border-radius: 5px;
-          font-size: 1rem;
-          box-sizing: border-box;
-        }
-
-        .form-grid input[type="text"]:focus,
-        .form-grid input[type="number"]:focus,
-        .form-grid select:focus {
-          border-color: #1a237e;
-          outline: none;
-          box-shadow: 0 0 0 2px rgba(26, 35, 126, 0.2);
-        }
-
-        .modal-actions {
-          margin-top: 25px;
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
-        }
-
-        .btn-sm {
-          padding: 8px 15px;
-          font-size: 0.9rem;
-          border-radius: 5px;
-        }
-
-        .btn-info {
-          background-color: #2196f3;
-          color: white;
-          border: none;
-        }
-
-        .btn-warning {
-          background-color: #ff9800;
-          color: white;
-          border: none;
-        }
-
-        .btn-danger {
-          background-color: #f44336;
-          color: white;
-          border: none;
-        }
-
-        .btn-primary {
-          background-color: #1a237e;
-          color: white;
-          border: none;
-        }
-
-        .btn-info:hover { background-color: #1976d2; }
-        .btn-warning:hover { background-color: #e68900; }
-        .btn-danger:hover { background-color: #d32f2f; }
-        .btn-primary:hover { background-color: #1565c0; }
-
-        .clickable {
-          cursor: pointer;
-        }
-
-        .form-grid-select {
-          width: 100%;
-          padding: 10px;
-          border: 1px solid #ddd;
-          border-radius: 5px;
-          font-size: 1rem;
-          box-sizing: border-box;
-        }
-
-        @media (max-width: 600px) {
-          .summary-cards {
-            grid-template-columns: 1fr;
-          }
-
-          .main-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
-          }
-
-          .search-bar {
-            width: 100%;
-            max-width: none;
-          }
-
-          .report-options {
-            flex-direction: column;
-          }
-
-          .quick-action-buttons {
-            flex-direction: column;
-          }
-
-          .modal-content {
-            padding: 20px;
-          }
-        }
-      `}</style>
-      <aside className="sidebar">
+    <div className="admin-dashboard">
+      <aside className={`sidebar ${isSidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-header">
-                    {isSidebarOpen && (
-            <>
-              <img src={logo} alt="Collyer International Logo" style={{width: '120px', height: 'auto', marginRight: '10px'}} />
-              <h2>Stock Clerk</h2>
-            </>
-          )}
-          <button className="toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            <FaTimes />
+          <div className="sidebar-logo">
+            <img src={logo} alt="Collyer logo" />
+            {isSidebarOpen && <h1>Stock Clerk</h1>}
+          </div>
+          <button className="sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+            {isSidebarOpen ? <FaTimes /> : <FaBars />}
           </button>
         </div>
         <nav className="sidebar-nav">
           <ul>
-            <li className={activeSection === 'dashboard' ? 'active' : ''} onClick={() => setActiveSection('dashboard')}>
-              <FaHome /> {isSidebarOpen && <span>Dashboard</span>}
+            <li>
+              <a href="#" className={activeSection === 'dashboard' ? 'active' : ''} onClick={() => handleNavClick('dashboard')}>
+                <FaHome className="nav-icon" />
+                {isSidebarOpen && <span>Dashboard</span>}
+              </a>
             </li>
-            <li className={activeSection === 'stock' ? 'active' : ''} onClick={() => setActiveSection('stock')}>
-              <FaBox /> {isSidebarOpen && <span>Stock</span>}
+            <li>
+              <a href="#" className={activeSection === 'stock' ? 'active' : ''} onClick={() => handleNavClick('stock')}>
+                <FaBox className="nav-icon" />
+                {isSidebarOpen && <span>Stock</span>}
+              </a>
             </li>
-            <li className={activeSection === 'requisitions' ? 'active' : ''} onClick={() => setActiveSection('requisitions')}>
-              <FaClipboardList /> {isSidebarOpen && <span>Requisitions</span>}
+            <li>
+              <a href="#" className={activeSection === 'requisitions' ? 'active' : ''} onClick={() => handleNavClick('requisitions')}>
+                <FaClipboardList className="nav-icon" />
+                {isSidebarOpen && <span>Requisitions</span>}
+              </a>
             </li>
-            <li className={activeSection === 'reports' ? 'active' : ''} onClick={() => setActiveSection('reports')}>
-              <FaFileAlt /> {isSidebarOpen && <span>Reports</span>}
+            <li>
+              <a href="#" className={activeSection === 'quick-actions' ? 'active' : ''} onClick={() => {handleNavClick('quick-actions'); setActiveAction(null);}}>
+                <FaExchangeAlt className="nav-icon" />
+                {isSidebarOpen && <span>Quick Actions</span>}
+              </a>
             </li>
-            <li className={activeSection === 'quick-actions' ? 'active' : ''} onClick={() => {setActiveSection('quick-actions'); setActiveAction(null);}}>
-              <FaExchangeAlt /> {isSidebarOpen && <span>Quick Actions</span>}
-            </li>
-            <li onClick={handleLogout}>
-              <FaSignOutAlt /> {isSidebarOpen && <span>Logout</span>}
+            <li>
+              <a href="#" className={activeSection === 'reports' ? 'active' : ''} onClick={() => handleNavClick('reports')}>
+                <FaFileAlt className="nav-icon" />
+                {isSidebarOpen && <span>Reports</span>}
+              </a>
             </li>
           </ul>
         </nav>
+        <div className="sidebar-footer">
+          <button className="logout-button" onClick={handleLogout}>
+            <FaSignOutAlt className="nav-icon" />
+            {isSidebarOpen && <span>Logout</span>}
+          </button>
+        </div>
       </aside>
 
-      <main className="main-content">
+      <main className={`main-content ${isSidebarOpen && window.innerWidth >= 768 ? '' : 'shifted'}`}>
         <header className="main-header">
-          <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
+          <button className="mobile-menu-button" onClick={() => setIsSidebarOpen(true)}>
             <FaBars />
           </button>
-          <div className="search-bar">
-            <FaSearch className="search-icon" />
-            <input
-              type="text"
-              placeholder="Filter by project name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <h1>{activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</h1>
+          <div className="header-actions">
+            <div className="search-bar">
+                <FaSearch />
+                <input
+                type="text"
+                placeholder="Filter by project name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <select onChange={(e) => setSelectedProject(e.target.value)} value={selectedProject} className="control-group">
+                <option value="">All Projects</option>
+                {projectNames.map(project => (
+                <option key={project} value={project}>{project}</option>
+                ))}
+            </select>
           </div>
-          <select onChange={(e) => setSelectedProject(e.target.value)} value={selectedProject}>
-            <option value="">All Projects</option>
-            {projectNames.map(project => (
-              <option key={project} value={project}>{project}</option>
-            ))}
-          </select>
         </header>
         {renderContent()}
       </main>
 
       {/* Issue Stock Modal */}
       {showIssueStockModal && issuingStockItem && (
-        <div className="modal-overlay">
+        <div className="modal-form">
           <div className="modal-content">
-            <h3>Issue Stock: {issuingStockItem.name}</h3>
+            <div className="card-header">
+                <h3>Issue Stock: {issuingStockItem.name}</h3>
+                <button className="btn btn-danger" onClick={() => setShowIssueStockModal(false)}><FaTimes/></button>
+            </div>
             <form onSubmit={handleIssueStockSubmit} className="form-grid">
-              <label>Quantity to Issue:</label>
-              <input type="number" value={issueDetails.quantity} onChange={(e) => setIssueDetails({ ...issueDetails, quantity: parseInt(e.target.value) })} max={issuingStockItem.quantity} required />
+              <div>
+                <label>Quantity to Issue:</label>
+                <input type="number" value={issueDetails.quantity} onChange={(e) => setIssueDetails({ ...issueDetails, quantity: parseInt(e.target.value) })} max={issuingStockItem.quantity} required />
+              </div>
+              <div>
+                <label>Issued To:</label>
+                <input type="text" value={issueDetails.issuedTo} onChange={(e) => setIssueDetails({ ...issueDetails, issuedTo: e.target.value })} required />
+              </div>
 
-              <label>Issued To:</label>
-              <input type="text" value={issueDetails.issuedTo} onChange={(e) => setIssueDetails({ ...issueDetails, issuedTo: e.target.value })} required />
-
-              <div className="modal-actions">
+              <div className="form-actions">
                 <button type="submit" className="btn btn-primary">Issue Stock</button>
-                <button type="button" className="btn btn-danger" onClick={() => setShowIssueStockModal(false)}>Cancel</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowIssueStockModal(false)}>Cancel</button>
               </div>
             </form>
           </div>

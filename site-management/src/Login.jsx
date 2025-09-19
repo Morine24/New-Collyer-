@@ -48,6 +48,9 @@ export default function Login() {
             case 'Foreman':
               navigate('/foreman-dashboard');
               break;
+            case 'Gate Officer':
+              navigate('/gate-officer');
+              break;
             default:
               navigate('/user-dashboard');
           }

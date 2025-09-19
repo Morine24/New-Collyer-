@@ -10,6 +10,7 @@ import AdminDashboard from './AdminDashboard';
 import StockClerkDashboard from './StockClerkDashboard';
 import UserDashboard from './UserDashboard';
 import ForemanDashboard from './ForemanDashboard';
+import GateOfficerDashboard from './GateOfficerDashboard';
 import ChangePassword from './ChangePassword';
 import ProtectedRoute from './ProtectedRoute';
 import './App.css';
@@ -128,6 +129,7 @@ function App() {
           <Route path="/stock-clerk" element={<ProtectedRoute><StockClerkDashboard currentUserData={currentUserData} /></ProtectedRoute>} />
           <Route path="/user-dashboard" element={<ProtectedRoute><UserDashboard projects={projects} currentUserData={currentUserData} requisitions={requisitions} addRequisition={addRequisition} /></ProtectedRoute>} />
           <Route path="/foreman-dashboard" element={<ProtectedRoute><ForemanDashboard currentUserData={currentUserData} /></ProtectedRoute>} />
+          <Route path="/gate-officer" element={<ProtectedRoute><GateOfficerDashboard currentUserData={currentUserData} /></ProtectedRoute>} />
         </Routes>
       </div>
     </Router>
