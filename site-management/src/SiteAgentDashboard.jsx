@@ -40,6 +40,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import SearchBar from './SearchBar';
+import StockManagement from './StockManagement';
 import logo from './assets/logo.jpeg';
 import './AdminDashboard.css';
 import './SiteAgentStyles.css';
@@ -855,6 +856,14 @@ const SiteAgentDashboard = ({ currentUserData }) => {
     </div>
   );
 
+  const renderStock = () => (
+    <StockManagement 
+      userRole="Site Agent"
+      currentUserData={currentUserData}
+      projects={projects}
+    />
+  );
+
   return (
     <div className="admin-dashboard">
       {/* Sidebar */}
@@ -952,6 +961,7 @@ const SiteAgentDashboard = ({ currentUserData }) => {
           {console.log('In content wrapper, activeSection:', activeSection)}
           {activeSection === 'dashboard' && renderDashboard()}
           {activeSection === 'requisitions' && renderRequisitions()}
+          {activeSection === 'stock' && renderStock()}
           {activeSection === 'reports' && renderReports()}
           {/* Other sections will be added here */}
         </div>

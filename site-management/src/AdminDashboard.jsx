@@ -6,12 +6,14 @@ import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaBell, FaBox, FaClipboardList, FaDollarSign, FaDownload, FaHome, FaChartLine, FaBars, FaSearch, FaUsers, FaProjectDiagram, FaSignOutAlt } from 'react-icons/fa';
 import JSZip from 'jszip';
 import SearchBar from './SearchBar';
+import StockManagement from './StockManagement';
 import logo from './assets/logo.jpeg';
 import './AdminDashboard.css';
 
 export default function CleanAdminDashboard({ currentUserData, requisitions, updateRequisitionStatus }) {
   const navigate = useNavigate();
   const [stocks, setStocks] = useState([]);
+  const [stockItems, setStockItems] = useState([]);
   const [projects, setProjects] = useState([]);
   const [laborCosts, setLaborCosts] = useState([]);
   
@@ -106,6 +108,45 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
 
     fetchLaborCosts();
   }, []);
+
+  // New useEffect to fetch stock items from Firestore
+  useEffect(() => {
+    const fetchStockItems = async () => {
+      try {
+        const stockItemsCollection = collection(db, 'stockItems');
+        const stockItemsSnapshot = await getDocs(stockItemsCollection);
+        const stockItemsList = stockItemsSnapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          purchaseDate: doc.data().purchaseDate || new Date().toISOString().split('T')[0]
+        }));
+        console.log('Fetched stock items:', stockItemsList);
+        setStockItems(stockItemsList);
+      } catch (error) {
+        console.error('Error fetching stock items:', error);
+      }
+    };
+
+    fetchStockItems();
+  }, []);
+
+  // Function to refresh stock items data
+  const refreshStockItems = async () => {
+    try {
+      const stockItemsCollection = collection(db, 'stockItems');
+      const stockItemsSnapshot = await getDocs(stockItemsCollection);
+      const stockItemsList = stockItemsSnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        purchaseDate: doc.data().purchaseDate || new Date().toISOString().split('T')[0]
+      }));
+      setStockItems(stockItemsList);
+    } catch (error) {
+      console.error('Error refreshing stock items:', error);
+    }
+  };
 
   // New useEffect to fetch visitors from Firestore
   useEffect(() => {
@@ -210,7 +251,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     console.log('Filtered visitors:', filteredVis); // Debug log
     setFilteredVisitors(filteredVis);
 
-  }, [searchQuery, requisitions, users, stocks, projects, visitors]);
+  }, [searchQuery, requisitions, users, stocks, projects, visitors, stockItems]);
 
   // Handle responsive sidebar behavior
   useEffect(() => {
@@ -239,7 +280,14 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   // Calculate stock costs for a project (from stockItems added directly)
   const calculateStockCosts = (projectName) => {
     const project = projects.find(p => p.name === projectName);
-    return project ? (project.stockCostsSpent || 0) : 0;
+    const oldStockCosts = project ? (project.stockCostsSpent || 0) : 0;
+    
+    // Calculate costs from new stockItems collection
+    const stockItemsCosts = stockItems
+      .filter(item => item.projectName === projectName)
+      .reduce((total, item) => total + (item.totalCost || 0), 0);
+    
+    return oldStockCosts + stockItemsCosts;
   };
 
   // Calculate labor costs for a project
@@ -712,8 +760,6 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
       </div>
     );
   };
-
-  
 
   const renderProjectManagement = () => (
     <div className="section-content">
@@ -1985,57 +2031,12 @@ For questions about this archive, contact the system administrator.
   };
 
   const renderStockManagement = () => (
-    <div className="section-content">
-      <div className="card">
-        <h3>Stock Inventory</h3>
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Remaining Units</th>
-                <th>Unit Cost</th>
-                <th>Total Value</th>
-                <th>Supplier</th>
-                <th>Project Name</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStocks.map(stock => (
-                <tr key={stock.id}>
-                  <td>{stock.name}</td>
-                  <td>{stock.quantity}</td>
-                  <td>Ksh{stock.unitCost}</td>
-                  <td>Ksh{(stock.quantity * stock.unitCost).toLocaleString()}</td>
-                  <td>{stock.supplier}</td>
-                  <td>{stock.project}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div className="card">
-        <div className="card-header">
-          <h3>Add New Item</h3>
-        </div>
-        <form onSubmit={handleAddNewItem} className="form-grid">
-          <input type="text" name="name" placeholder="Item Name" required />
-          <input type="number" name="quantity" placeholder="Quantity" required />
-          <input type="number" name="unitCost" placeholder="Unit Cost" step="0.01" required />
-          <input type="text" name="supplier" placeholder="Supplier" required />
-          <select name="project" required>
-            <option value="">Select Project</option>
-            {projects.map(project => (
-              <option key={project.id} value={project.name}>{project.name}</option>
-            ))}
-          </select>
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary">Add Item</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <StockManagement 
+      userRole="Admin"
+      currentUserData={currentUserData}
+      projects={projects}
+      onStockUpdate={refreshStockItems}
+    />
   );
 
   const renderVisitorManagement = () => (
@@ -2141,15 +2142,15 @@ For questions about this archive, contact the system administrator.
               </a>
             </li>
             <li>
-              <a href="#" className={activeSection === 'stock' ? 'active' : ''} onClick={() => setActiveSection('stock')}>
-                <FaBox className="nav-icon" />
-                {isSidebarOpen && 'Stock'}
-              </a>
-            </li>
-            <li>
               <a href="#" className={activeSection === 'users' ? 'active' : ''} onClick={() => setActiveSection('users')}>
                 <FaUsers className="nav-icon" />
                 {isSidebarOpen && 'Users'}
+              </a>
+            </li>
+            <li>
+              <a href="#" className={activeSection === 'stock' ? 'active' : ''} onClick={() => setActiveSection('stock')}>
+                <FaBox className="nav-icon" />
+                {isSidebarOpen && 'Stock Management'}
               </a>
             </li>
             <li>
@@ -2441,6 +2442,175 @@ For questions about this archive, contact the system administrator.
 
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={closeWorkReportModal}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cost Breakdown Modal */}
+      {showCostBreakdownModal && selectedProjectForCostBreakdown && (
+        <div className="modal-overlay" onClick={() => setShowCostBreakdownModal(false)}>
+          <div className="modal-content cost-breakdown-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Cost Breakdown - {selectedProjectForCostBreakdown.name}</h3>
+              <button 
+                className="modal-close" 
+                onClick={() => setShowCostBreakdownModal(false)}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="cost-summary">
+                <div className="summary-cards">
+                  <div className="summary-card">
+                    <h4>Stock Items</h4>
+                    <span className="cost-amount">
+                      Ksh{calculateStockCosts(selectedProjectForCostBreakdown.name).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="summary-card">
+                    <h4>Requisitions</h4>
+                    <span className="cost-amount">
+                      Ksh{calculateRequisitionCosts(selectedProjectForCostBreakdown.name).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="summary-card">
+                    <h4>Labor Costs</h4>
+                    <span className="cost-amount">
+                      Ksh{calculateLaborCosts(selectedProjectForCostBreakdown.name).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="summary-card total">
+                    <h4>Total Cost</h4>
+                    <span className="cost-amount">
+                      Ksh{calculateProjectCost(selectedProjectForCostBreakdown.name).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stock Items Breakdown */}
+              {stockItems.filter(item => item.projectName === selectedProjectForCostBreakdown.name).length > 0 && (
+                <div className="cost-section">
+                  <h4>Stock Items</h4>
+                  <div className="table-container">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Item Name</th>
+                          <th>Description</th>
+                          <th>Quantity</th>
+                          <th>Unit Price</th>
+                          <th>Total Cost</th>
+                          <th>Date Added</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stockItems
+                          .filter(item => item.projectName === selectedProjectForCostBreakdown.name)
+                          .map(item => (
+                            <tr key={item.id}>
+                              <td>{item.itemName}</td>
+                              <td>{item.description}</td>
+                              <td>{item.quantity}</td>
+                              <td>Ksh{parseFloat(item.unitPrice || 0).toLocaleString()}</td>
+                              <td>Ksh{(parseFloat(item.quantity || 0) * parseFloat(item.unitPrice || 0)).toLocaleString()}</td>
+                              <td>{item.dateAdded ? new Date(item.dateAdded.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Requisitions Breakdown */}
+              {requisitions.filter(req => req.projectName === selectedProjectForCostBreakdown.name).length > 0 && (
+                <div className="cost-section">
+                  <h4>Requisitions</h4>
+                  <div className="table-container">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Description</th>
+                          <th>Quantity</th>
+                          <th>Unit Price</th>
+                          <th>Total Cost</th>
+                          <th>Status</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {requisitions
+                          .filter(req => req.projectName === selectedProjectForCostBreakdown.name)
+                          .map(req => (
+                            <tr key={req.id}>
+                              <td>{req.description}</td>
+                              <td>{req.quantity}</td>
+                              <td>Ksh{parseFloat(req.unitPrice || 0).toLocaleString()}</td>
+                              <td>Ksh{(parseFloat(req.quantity || 0) * parseFloat(req.unitPrice || 0)).toLocaleString()}</td>
+                              <td>
+                                <span className={`status-badge status-${req.status}`}>
+                                  {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                                </span>
+                              </td>
+                              <td>{req.dateSubmitted ? new Date(req.dateSubmitted.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Labor Costs Breakdown */}
+              {laborCosts.filter(labor => labor.projectName === selectedProjectForCostBreakdown.name).length > 0 && (
+                <div className="cost-section">
+                  <h4>Labor Costs</h4>
+                  <div className="table-container">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Description</th>
+                          <th>Amount</th>
+                          <th>Date Incurred</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {laborCosts
+                          .filter(labor => labor.projectName === selectedProjectForCostBreakdown.name)
+                          .map(labor => (
+                            <tr key={labor.id}>
+                              <td>{labor.description}</td>
+                              <td>Ksh{parseFloat(labor.amount || 0).toLocaleString()}</td>
+                              <td>{labor.dateIncurred ? new Date(labor.dateIncurred).toLocaleDateString() : 'N/A'}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {stockItems.filter(item => item.projectName === selectedProjectForCostBreakdown.name).length === 0 &&
+               requisitions.filter(req => req.projectName === selectedProjectForCostBreakdown.name).length === 0 &&
+               laborCosts.filter(labor => labor.projectName === selectedProjectForCostBreakdown.name).length === 0 && (
+                <div className="empty-state">
+                  <p>No cost data found for this project.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowCostBreakdownModal(false)}
+              >
                 Close
               </button>
             </div>
