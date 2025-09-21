@@ -42,6 +42,9 @@ export default function Login() {
             case 'Manager':
               navigate('/admin');
               break;
+            case 'Site Agent':
+              navigate('/site-agent');
+              break;
             case 'Stock Clerk':
               navigate('/stock-clerk');
               break;

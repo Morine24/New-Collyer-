@@ -4,6 +4,7 @@ import { collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc } from '
 import { db } from './firebase';
 import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaBell, FaBox, FaClipboardList, FaDollarSign, FaDownload, FaHome, FaChartLine, FaBars, FaSearch, FaUsers, FaProjectDiagram, FaSignOutAlt } from 'react-icons/fa';
+import JSZip from 'jszip';
 import SearchBar from './SearchBar';
 import logo from './assets/logo.jpeg';
 import './AdminDashboard.css';
@@ -19,6 +20,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [filteredStocks, setFilteredStocks] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]);
+  const [filteredVisitors, setFilteredVisitors] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     // Open by default on tablet/desktop (>=768px), closed on smaller
@@ -49,7 +51,13 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   const [isAddLaborFormVisible, setIsAddLaborFormVisible] = useState(false);
   // Removed selectedProjectForAnalysis state (unused after removing cost analysis block)
   const [showProjectDetailsFor, setShowProjectDetailsFor] = useState(null);
+  const [selectedProjectForCostBreakdown, setSelectedProjectForCostBreakdown] = useState(null);
+  const [showCostBreakdownModal, setShowCostBreakdownModal] = useState(false);
   const [attendanceReports, setAttendanceReports] = useState([]);
+  const [workReports, setWorkReports] = useState([]);
+  const [visitors, setVisitors] = useState([]);
+  const [selectedWorkReport, setSelectedWorkReport] = useState(null);
+  const [showWorkReportModal, setShowWorkReportModal] = useState(false);
   
 
   useEffect(() => {
@@ -99,6 +107,28 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     fetchLaborCosts();
   }, []);
 
+  // New useEffect to fetch visitors from Firestore
+  useEffect(() => {
+    const fetchVisitors = async () => {
+      try {
+        const visitorsCollection = collection(db, 'visitors');
+        const visitorSnapshot = await getDocs(visitorsCollection);
+        const visitorList = visitorSnapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data(),
+          checkInTime: doc.data().checkInTime?.toDate ? doc.data().checkInTime.toDate() : new Date(doc.data().checkInTime),
+          checkOutTime: doc.data().checkOutTime?.toDate ? doc.data().checkOutTime.toDate() : (doc.data().checkOutTime ? new Date(doc.data().checkOutTime) : null)
+        }));
+        console.log('Fetched visitors:', visitorList); // Debug log
+        setVisitors(visitorList);
+      } catch (error) {
+        console.error('Error fetching visitors:', error);
+      }
+    };
+
+    fetchVisitors();
+  }, []);
+
   useEffect(() => {
     const fetchAttendanceReports = async () => {
       const reportsCollection = collection(db, 'attendanceReports');
@@ -108,6 +138,26 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     };
 
     fetchAttendanceReports();
+  }, []);
+
+  useEffect(() => {
+    const fetchWorkReports = async () => {
+      try {
+        const workReportsCollection = collection(db, 'workReports');
+        const workReportsSnapshot = await getDocs(workReportsCollection);
+        const workReportsList = workReportsSnapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data(),
+          submittedAt: doc.data().submittedAt?.toDate ? doc.data().submittedAt.toDate() : new Date(doc.data().submittedAt)
+        }));
+        console.log('Fetched work reports:', workReportsList);
+        setWorkReports(workReportsList);
+      } catch (error) {
+        console.error('Error fetching work reports:', error);
+      }
+    };
+
+    fetchWorkReports();
   }, []);
 
   
@@ -147,7 +197,20 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     });
     setFilteredProjects(filteredProjs);
 
-  }, [searchQuery, requisitions, users, stocks, projects]);
+    // Filter visitors
+    const filteredVis = visitors.filter(visitor => {
+      const name = visitor.name ? visitor.name.toLowerCase() : '';
+      const company = visitor.company ? visitor.company.toLowerCase() : '';
+      const host = visitor.host ? visitor.host.toLowerCase() : '';
+      const reason = visitor.reason ? visitor.reason.toLowerCase() : '';
+      const status = visitor.status ? visitor.status.toLowerCase() : '';
+      return name.includes(search) || company.includes(search) || host.includes(search) || reason.includes(search) || status.includes(search);
+    });
+    console.log('All visitors:', visitors); // Debug log
+    console.log('Filtered visitors:', filteredVis); // Debug log
+    setFilteredVisitors(filteredVis);
+
+  }, [searchQuery, requisitions, users, stocks, projects, visitors]);
 
   // Handle responsive sidebar behavior
   useEffect(() => {
@@ -163,6 +226,16 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
   }, [isSidebarOpen]);
 
   // Calculate requisition costs for a project
+  const calculateRequisitionCosts = (projectName) => {
+    return requisitions
+      .filter(req => req.projectName === projectName && req.status === 'approved')
+      .reduce((total, req) => {
+        // If requisition has cost/price field, use it; otherwise use quantity * estimated unit cost
+        const cost = req.cost || req.price || (req.quantity * (req.unitPrice || 100)); // Default unit price if not specified
+        return total + (cost || 0);
+      }, 0);
+  };
+
   // Calculate stock costs for a project (from stockItems added directly)
   const calculateStockCosts = (projectName) => {
     const project = projects.find(p => p.name === projectName);
@@ -176,9 +249,9 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
       .reduce((total, lc) => total + lc.amount, 0);
   };
 
-  // Calculate total project cost (stock costs + labor costs)
+  // Calculate total project cost (requisition costs + stock costs + labor costs)
   const calculateProjectCost = (projectName) => {
-    return calculateStockCosts(projectName) + calculateLaborCosts(projectName);
+    return calculateRequisitionCosts(projectName) + calculateStockCosts(projectName) + calculateLaborCosts(projectName);
   };
 
   // Removed unused calculateTotalStockValue to satisfy linter
@@ -243,6 +316,12 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
       console.error("Error adding new labor cost:", error);
       alert("Failed to add new labor cost.");
     }
+  };
+
+  // Handler for viewing project cost breakdown
+  const handleViewProjectCostBreakdown = (project) => {
+    setSelectedProjectForCostBreakdown(project);
+    setShowCostBreakdownModal(true);
   };
 
   const handleDeleteProject = async (projectId) => {
@@ -384,6 +463,25 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
         title: `Attendance Report - ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)}`,
         data: attendanceReports
       };
+    } else if (reportType === 'workReports') {
+      const filteredReports = workReports.filter(report => {
+        const reportDate = new Date(report.submittedAt);
+        return dateFilter(reportDate);
+      });
+      return {
+        title: `Work Reports - ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)}`,
+        data: filteredReports,
+        summary: {
+          total: filteredReports.length,
+          daily: filteredReports.filter(r => r.reportType === 'daily').length,
+          weekly: filteredReports.filter(r => r.reportType === 'weekly').length,
+          totalMaterialsCost: filteredReports.reduce((sum, report) => {
+            const materialsCost = report.materialsUsed?.reduce((total, material) => 
+              total + (parseFloat(material.cost) || 0), 0) || 0;
+            return sum + materialsCost;
+          }, 0)
+        }
+      };
     } else { // projects
       return {
         title: `Projects Report - ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)}`,
@@ -399,17 +497,163 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
 
   const downloadReport = () => {
     const reportData = generateReportData();
+    
+    if (reportType === 'workReports') {
+      // Work reports contain multimedia, so offer multiple download options
+      downloadWorkReportsWithMedia(reportData);
+    } else {
+      // Standard reports can be downloaded as CSV
+      downloadGenericReportCSV(reportData);
+    }
+  };
+
+  const downloadWorkReportsWithMedia = (reportData) => {
+    // Check if any reports contain multimedia
+    const hasMultimedia = reportData.data.some(report => 
+      (report.photos && report.photos.length > 0) || 
+      (report.videos && report.videos.length > 0)
+    );
+
+    if (hasMultimedia) {
+      // Show options for multimedia reports
+      const choice = confirm(
+        'Work reports contain photos and videos.\n\n' +
+        'Click OK to download as ZIP archive (includes all media)\n' +
+        'Click Cancel to download as CSV only (no media files)'
+      );
+      
+      if (choice) {
+        downloadAllWorkReports(); // ZIP with media
+      } else {
+        downloadWorkReportsCSV(reportData); // CSV only
+      }
+    } else {
+      // No multimedia, just download CSV
+      downloadWorkReportsCSV(reportData);
+    }
+  };
+
+  const downloadGenericReportCSV = (reportData) => {
+    if (!reportData.data || reportData.data.length === 0) {
+      alert('No data available to download');
+      return;
+    }
+
     const csvContent = "data:text/csv;charset=utf-8," +
-      Object.keys(reportData.data[0] || {}).join(",") + "\n" +
+      Object.keys(reportData.data[0]).join(",") + "\n" +
       reportData.data.map(row => Object.values(row).join(",")).join("\n");
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `${reportType}_report_${reportPeriod}.csv`);
+    link.setAttribute("download", `${reportType}_report_${reportPeriod}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const downloadWorkReportsCSV = (reportData) => {
+    if (!reportData.data || reportData.data.length === 0) {
+      alert('No work reports available to download');
+      return;
+    }
+
+    // Create comprehensive CSV headers for work reports
+    const headers = [
+      'Report ID',
+      'Report Type',
+      'Project Name',
+      'Date/Period',
+      'Submitted By',
+      'Submitted At',
+      'Status',
+      'Work Description',
+      'Tasks Completed',
+      'Tasks In Progress', 
+      'Tasks Planned',
+      'Workers Present',
+      'Work Hours',
+      'Labor Details',
+      'Equipment Used',
+      'Weather Conditions',
+      'Challenges',
+      'Recommendations',
+      'Materials Used (JSON)',
+      'Total Materials Cost',
+      'Photos Count',
+      'Videos Count',
+      'Additional Notes'
+    ];
+
+    // Transform work report data for CSV
+    const csvData = reportData.data.map(report => {
+      const materialsCost = report.materialsUsed?.reduce((total, material) => 
+        total + (parseFloat(material.cost) || 0), 0) || 0;
+      
+      const materialsJson = report.materialsUsed ? JSON.stringify(report.materialsUsed) : '';
+      
+      return [
+        report.id || '',
+        report.reportType || '',
+        report.projectName || '',
+        report.reportType === 'daily' 
+          ? report.reportDate || ''
+          : `${report.weekStartDate || ''} to ${report.weekEndDate || ''}`,
+        report.submittedBy || '',
+        report.submittedAt ? new Date(report.submittedAt).toLocaleString() : '',
+        report.status || '',
+        `"${(report.workDescription || '').replace(/"/g, '""')}"`,
+        `"${(report.tasksCompleted || '').replace(/"/g, '""')}"`,
+        `"${(report.tasksInProgress || '').replace(/"/g, '""')}"`,
+        `"${(report.tasksPlanned || '').replace(/"/g, '""')}"`,
+        report.workersPresent || '',
+        report.workHours || '',
+        `"${(report.laborDetails || '').replace(/"/g, '""')}"`,
+        `"${(report.equipmentUsed || '').replace(/"/g, '""')}"`,
+        report.weatherConditions || '',
+        `"${(report.challenges || '').replace(/"/g, '""')}"`,
+        `"${(report.recommendations || '').replace(/"/g, '""')}"`,
+        `"${materialsJson.replace(/"/g, '""')}"`,
+        materialsCost,
+        report.photos?.length || 0,
+        report.videos?.length || 0,
+        `"${(report.notes || '').replace(/"/g, '""')}"`
+      ];
+    });
+
+    // Create CSV content
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" +
+      headers.join(",") + "\n" +
+      csvData.map(row => row.join(",")).join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `work_reports_${reportPeriod}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Function to download file from Firestore content or Firebase Storage URL
+  const downloadFileFromReport = (report) => {
+    if (report.storageMethod === 'firestore' && report.content) {
+      // Download from Firestore content
+      const blob = new Blob([report.content], { type: report.mimeType || 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = report.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } else if (report.url) {
+      // Download from Firebase Storage URL
+      window.open(report.url, '_blank');
+    } else {
+      alert('File not available for download');
+    }
   };
 
   const renderDashboard = () => {
@@ -485,6 +729,8 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
               <tr>
                 <th>Name</th>
                 <th>Budget</th>
+                <th>Total Spent</th>
+                <th>Remaining Budget</th>
                 <th>Start Date</th>
                 <th>Expected Date of Completion</th>
                 <th>Status</th>
@@ -492,33 +738,61 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
               </tr>
             </thead>
             <tbody>
-              {filteredProjects.map(project => (
-                <tr key={project.id}>
-                  <td className="clickable">{project.name}</td>
-                  <td>Ksh{project.budget.toLocaleString()}</td>
-                  <td>{project.startDate}</td>
-                  <td>{project.expectedCompletionDate}</td>
-                  <td>
-                    <span className={`status-badge status-${project.status}`}>
-                      {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="actions-cell">
-                    <button
-                      className="btn btn-sm btn-secondary"
-                      onClick={() => setEditingProject(project)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={() => handleDeleteProject(project.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
+              {filteredProjects.map(project => {
+                const totalSpent = calculateProjectCost(project.name);
+                const remaining = project.budget - totalSpent;
+                const budgetPercentage = ((totalSpent / project.budget) * 100).toFixed(1);
+                
+                return (
+                  <tr key={project.id}>
+                    <td className="clickable">{project.name}</td>
+                    <td>Ksh{project.budget.toLocaleString()}</td>
+                    <td>
+                      <div>
+                        <strong style={{ color: totalSpent > project.budget ? '#e74c3c' : '#27ae60' }}>
+                          Ksh{totalSpent.toLocaleString()}
+                        </strong>
+                        <br />
+                        <small style={{ color: '#666' }}>({budgetPercentage}% of budget)</small>
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ color: remaining < 0 ? '#e74c3c' : '#27ae60' }}>
+                        Ksh{remaining.toLocaleString()}
+                      </span>
+                    </td>
+                    <td>{project.startDate}</td>
+                    <td>{project.expectedCompletionDate}</td>
+                    <td>
+                      <span className={`status-badge status-${project.status}`}>
+                        {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="actions-cell">
+                      <button
+                        className="btn btn-sm btn-primary"
+                        onClick={() => handleViewProjectCostBreakdown(project)}
+                        style={{ marginRight: '5px' }}
+                      >
+                        View Costs
+                      </button>
+                      <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => setEditingProject(project)}
+                        style={{ marginRight: '5px' }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDeleteProject(project.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -648,6 +922,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
               <select name="role" required>
                 <option value="">Select Role</option>
                 <option value="Manager">Manager</option>
+                <option value="Site Agent">Site Agent</option>
                 <option value="Stock Clerk">Stock Clerk</option>
                 <option value="Foreman">Foreman</option>
                 <option value="Gate Officer">Gate Officer</option>
@@ -671,6 +946,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
               <input type="email" name="email" placeholder="Email Address" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} required />
               <select name="role" value={editingUser.role} onChange={(e) => setEditingUser({...editingUser, role: e.target.value})} required>
                 <option value="Manager">Manager</option>
+                <option value="Site Agent">Site Agent</option>
                 <option value="Stock Clerk">Stock Clerk</option>
                 <option value="Foreman">Foreman</option>
                 <option value="Gate Officer">Gate Officer</option>
@@ -681,6 +957,121 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                 <button type="button" className="btn btn-secondary" onClick={() => setEditingUser(null)}>Cancel</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Project Cost Breakdown Modal */}
+      {showCostBreakdownModal && selectedProjectForCostBreakdown && (
+        <div className="modal-form">
+          <div className="modal-content" style={{ maxWidth: '800px', width: '90%' }}>
+            <div className="modal-header">
+              <h3>Cost Breakdown - {selectedProjectForCostBreakdown.name}</h3>
+              <button 
+                className="btn btn-sm btn-secondary" 
+                onClick={() => setShowCostBreakdownModal(false)}
+                style={{ float: 'right' }}
+              >
+                ✕ Close
+              </button>
+            </div>
+            
+            <div className="cost-summary" style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                <div>
+                  <strong>Project Budget:</strong> 
+                  <div style={{ fontSize: '18px', color: '#2c3e50' }}>Ksh{selectedProjectForCostBreakdown.budget.toLocaleString()}</div>
+                </div>
+                <div>
+                  <strong>Total Spent:</strong> 
+                  <div style={{ fontSize: '18px', color: '#e74c3c' }}>Ksh{calculateProjectCost(selectedProjectForCostBreakdown.name).toLocaleString()}</div>
+                </div>
+                <div>
+                  <strong>Remaining:</strong> 
+                  <div style={{ fontSize: '18px', color: selectedProjectForCostBreakdown.budget - calculateProjectCost(selectedProjectForCostBreakdown.name) < 0 ? '#e74c3c' : '#27ae60' }}>
+                    Ksh{(selectedProjectForCostBreakdown.budget - calculateProjectCost(selectedProjectForCostBreakdown.name)).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="cost-breakdown-sections">
+              {/* Requisitions Section */}
+              <div className="cost-section" style={{ marginBottom: '20px' }}>
+                <h4 style={{ color: '#2c3e50', borderBottom: '2px solid #3498db', paddingBottom: '5px' }}>
+                  Requisitions - Ksh{calculateRequisitionCosts(selectedProjectForCostBreakdown.name).toLocaleString()}
+                </h4>
+                <div className="table-container" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  <table className="data-table" style={{ fontSize: '13px' }}>
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {requisitions
+                        .filter(req => req.projectName === selectedProjectForCostBreakdown.name)
+                        .map(req => (
+                          <tr key={req.id}>
+                            <td>{req.items}</td>
+                            <td>{req.quantity}</td>
+                            <td>Ksh{(req.unitPrice || 0).toLocaleString()}</td>
+                            <td>Ksh{((req.cost || req.price || (req.quantity * (req.unitPrice || 0))) || 0).toLocaleString()}</td>
+                            <td><span className={`status-badge status-${req.status}`}>{req.status}</span></td>
+                            <td>{req.date}</td>
+                          </tr>
+                        ))
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Labor Costs Section */}
+              <div className="cost-section" style={{ marginBottom: '20px' }}>
+                <h4 style={{ color: '#2c3e50', borderBottom: '2px solid #e67e22', paddingBottom: '5px' }}>
+                  Labor Costs - Ksh{calculateLaborCosts(selectedProjectForCostBreakdown.name).toLocaleString()}
+                </h4>
+                <div className="table-container" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  <table className="data-table" style={{ fontSize: '13px' }}>
+                    <thead>
+                      <tr>
+                        <th>Description</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {laborCosts
+                        .filter(lc => lc.projectName === selectedProjectForCostBreakdown.name)
+                        .map((lc, index) => (
+                          <tr key={index}>
+                            <td>{lc.description}</td>
+                            <td>Ksh{lc.amount.toLocaleString()}</td>
+                            <td>{lc.dateIncurred}</td>
+                          </tr>
+                        ))
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Stock Costs Section */}
+              <div className="cost-section">
+                <h4 style={{ color: '#2c3e50', borderBottom: '2px solid #27ae60', paddingBottom: '5px' }}>
+                  Stock Costs - Ksh{calculateStockCosts(selectedProjectForCostBreakdown.name).toLocaleString()}
+                </h4>
+                <p style={{ color: '#666', fontStyle: 'italic' }}>
+                  Stock costs are tracked directly in the project record.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -700,6 +1091,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
               <option value="requisitions">Requisitions Report</option>
               <option value="projects">Projects Report</option>
               <option value="attendance">Attendance Report</option>
+              <option value="workReports">Work Reports</option>
             </select>
           </div>
           
@@ -711,10 +1103,6 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
               <option value="monthly">Monthly</option>
             </select>
           </div>
-          
-          <button className="btn btn-primary" onClick={downloadReport}>
-            <FaDownload /> <span>Download CSV</span>
-          </button>
         </div>
 
         <div className="card report-card">
@@ -903,9 +1291,13 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                         <td>{report.type}</td>
                         <td>{report.uploadedAt ? new Date(report.uploadedAt.seconds * 1000).toLocaleString() : 'N/A'}</td>
                         <td>
-                          <a href={report.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">
+                          <button 
+                            onClick={() => downloadFileFromReport(report)} 
+                            className="btn btn-primary btn-sm"
+                            title="Download file"
+                          >
                             <FaDownload /> Download
-                          </a>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -914,9 +1306,566 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
               </div>
             </div>
           )}
+
+          {reportType === 'workReports' && (
+            <div className="report-content">
+              <div className="report-summary">
+                <div className="summary-stat">
+                  <span className="stat-label">Total Work Reports:</span>
+                  <span className="stat-value">{workReports.length}</span>
+                </div>
+                <div className="summary-stat">
+                  <span className="stat-label">Daily Reports:</span>
+                  <span className="stat-value">{workReports.filter(report => report.reportType === 'daily').length}</span>
+                </div>
+                <div className="summary-stat">
+                  <span className="stat-label">Weekly Reports:</span>
+                  <span className="stat-value">{workReports.filter(report => report.reportType === 'weekly').length}</span>
+                </div>
+              </div>
+              
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Report Type</th>
+                      <th>Project</th>
+                      <th>Date/Period</th>
+                      <th>Submitted By</th>
+                      <th>Work Description</th>
+                      <th>Materials Cost</th>
+                      <th>Workers</th>
+                      <th>Media</th>
+                      <th>Status</th>
+                      <th>Submitted At</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workReports.map(report => {
+                      const materialsCost = report.materialsUsed?.reduce((total, material) => 
+                        total + (parseFloat(material.cost) || 0), 0) || 0;
+                      
+                      return (
+                        <tr key={report.id}>
+                          <td>
+                            <span className={`status-badge ${report.reportType === 'daily' ? 'status-daily' : 'status-weekly'}`}>
+                              {report.reportType.charAt(0).toUpperCase() + report.reportType.slice(1)}
+                            </span>
+                          </td>
+                          <td>{report.projectName || 'N/A'}</td>
+                          <td>
+                            {report.reportType === 'daily' 
+                              ? report.reportDate 
+                              : `${report.weekStartDate} to ${report.weekEndDate}`
+                            }
+                          </td>
+                          <td>{report.submittedBy}</td>
+                          <td>
+                            <div className="work-description-preview">
+                              {report.workDescription?.substring(0, 100) || 'No description'}
+                              {report.workDescription?.length > 100 && '...'}
+                            </div>
+                          </td>
+                          <td>Ksh{materialsCost.toLocaleString()}</td>
+                          <td>{report.workersPresent || 'N/A'}</td>
+                          <td>
+                            <div className="media-indicators">
+                              {report.photos && report.photos.length > 0 && (
+                                <span className="media-badge photo-badge" title={`${report.photos.length} photos`}>
+                                  📷 {report.photos.length}
+                                </span>
+                              )}
+                              {report.videos && report.videos.length > 0 && (
+                                <span className="media-badge video-badge" title={`${report.videos.length} videos`}>
+                                  🎥 {report.videos.length}
+                                </span>
+                              )}
+                              {(!report.photos || report.photos.length === 0) && 
+                               (!report.videos || report.videos.length === 0) && (
+                                <span className="no-media">No media</span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`status-badge status-${report.status}`}>
+                              {report.status?.charAt(0).toUpperCase() + report.status?.slice(1)}
+                            </span>
+                          </td>
+                          <td>
+                            {report.submittedAt 
+                              ? new Date(report.submittedAt).toLocaleString()
+                              : 'N/A'
+                            }
+                          </td>
+                          <td>
+                            <div className="action-buttons">
+                              <button 
+                                className="btn btn-sm btn-primary"
+                                onClick={() => viewWorkReportDetails(report)}
+                                title="View full report details"
+                                style={{ marginRight: '8px' }}
+                              >
+                                View Details
+                              </button>
+                              <button 
+                                className="btn btn-sm btn-success"
+                                onClick={() => downloadIndividualWorkReport(report)}
+                                title="Download this report"
+                              >
+                                <FaDownload /> Download
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
+  };
+
+  const viewWorkReportDetails = (report) => {
+    setSelectedWorkReport(report);
+    setShowWorkReportModal(true);
+  };
+
+  const closeWorkReportModal = () => {
+    setSelectedWorkReport(null);
+    setShowWorkReportModal(false);
+  };
+
+  const downloadIndividualWorkReport = async (report) => {
+    // Check if report contains multimedia
+    const hasMultimedia = (report.photos && report.photos.length > 0) || 
+                         (report.videos && report.videos.length > 0);
+
+    if (hasMultimedia) {
+      // Show options for multimedia reports
+      const choice = confirm(
+        'This report contains photos and/or videos.\n\n' +
+        'Click OK to download as ZIP archive (includes all media)\n' +
+        'Click Cancel to download as text document only (no media files)'
+      );
+      
+      if (choice) {
+        await downloadIndividualReportWithMedia(report);
+      } else {
+        downloadIndividualReportText(report);
+      }
+    } else {
+      // No multimedia, just download text
+      downloadIndividualReportText(report);
+    }
+  };
+
+  const downloadIndividualReportText = (report) => {
+    // Create a comprehensive report document
+    const reportContent = generateWorkReportDocument(report);
+    
+    // Create and download as text file
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `work_report_${sanitizeFileName(report.projectName || 'project')}_${sanitizeFileName(report.reportDate || report.weekStartDate || 'date')}_${sanitizeFileName(report.submittedBy || 'user')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const downloadIndividualReportWithMedia = async (report) => {
+    try {
+      const zipFile = new JSZip();
+
+      // Add the text report
+      const reportContent = generateWorkReportDocument(report);
+      zipFile.file('work_report.txt', reportContent);
+
+      // Add photos
+      if (report.photos && report.photos.length > 0) {
+        const photosFolder = zipFile.folder('photos');
+        
+        for (let index = 0; index < report.photos.length; index++) {
+          const photo = report.photos[index];
+          try {
+            const photoBlob = await downloadMediaFile(photo.url);
+            if (photoBlob) {
+              const photoFileName = `${index + 1}_${sanitizeFileName(photo.name || `photo_${index + 1}`)}`;
+              photosFolder.file(photoFileName, photoBlob);
+            }
+          } catch (error) {
+            console.error(`Error downloading photo ${index + 1}:`, error);
+            photosFolder.file(`${index + 1}_FAILED_TO_DOWNLOAD.txt`, 
+              `Failed to download: ${photo.name || `photo_${index + 1}`}\nOriginal URL: ${photo.url}\nError: ${error.message}`);
+          }
+        }
+      }
+
+      // Add videos
+      if (report.videos && report.videos.length > 0) {
+        const videosFolder = zipFile.folder('videos');
+        
+        for (let index = 0; index < report.videos.length; index++) {
+          const video = report.videos[index];
+          try {
+            const videoBlob = await downloadMediaFile(video.url);
+            if (videoBlob) {
+              const videoFileName = `${index + 1}_${sanitizeFileName(video.name || `video_${index + 1}`)}`;
+              videosFolder.file(videoFileName, videoBlob);
+            }
+          } catch (error) {
+            console.error(`Error downloading video ${index + 1}:`, error);
+            videosFolder.file(`${index + 1}_FAILED_TO_DOWNLOAD.txt`, 
+              `Failed to download: ${video.name || `video_${index + 1}`}\nOriginal URL: ${video.url}\nError: ${error.message}`);
+          }
+        }
+      }
+
+      // Generate and download ZIP file
+      const blob = await zipFile.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      });
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `work_report_${sanitizeFileName(report.projectName || 'project')}_${sanitizeFileName(report.reportDate || report.weekStartDate || 'date')}_complete.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      alert('Download complete! Archive includes the report and all media files.');
+    } catch (error) {
+      console.error('Error creating ZIP file:', error);
+      alert('Error creating download file. This may be due to large file sizes or network issues. Please try downloading as text only or check your internet connection.');
+    }
+  };
+
+  const generateWorkReportDocument = (report) => {
+    const materialsCost = report.materialsUsed?.reduce((total, material) => 
+      total + (parseFloat(material.cost) || 0), 0) || 0;
+
+    let content = `
+=====================================
+WORK REPORT DOCUMENT
+=====================================
+
+Report Information:
+------------------
+Report Type: ${report.reportType?.toUpperCase() || 'N/A'}
+Project: ${report.projectName || 'N/A'}
+Date/Period: ${report.reportType === 'daily' 
+  ? report.reportDate || 'N/A'
+  : `${report.weekStartDate || 'N/A'} to ${report.weekEndDate || 'N/A'}`}
+Submitted By: ${report.submittedBy || 'N/A'}
+Submitted At: ${report.submittedAt ? new Date(report.submittedAt).toLocaleString() : 'N/A'}
+Status: ${report.status?.toUpperCase() || 'N/A'}
+
+Work Description:
+----------------
+${report.workDescription || 'No description provided'}
+
+Tasks Completed:
+---------------
+${report.tasksCompleted || 'No tasks completed listed'}
+
+Tasks In Progress:
+-----------------
+${report.tasksInProgress || 'No tasks in progress listed'}
+
+Tasks Planned:
+-------------
+${report.tasksPlanned || 'No tasks planned listed'}
+
+Labor and Equipment:
+-------------------
+Workers Present: ${report.workersPresent || 'N/A'}
+Work Hours: ${report.workHours || 'N/A'}
+Labor Details: ${report.laborDetails || 'No labor details provided'}
+Equipment Used: ${report.equipmentUsed || 'No equipment listed'}
+
+Conditions and Challenges:
+-------------------------
+Weather Conditions: ${report.weatherConditions || 'N/A'}
+Challenges Faced: ${report.challenges || 'No challenges reported'}
+Recommendations: ${report.recommendations || 'No recommendations provided'}
+
+Materials Used:
+--------------`;
+
+    if (report.materialsUsed && report.materialsUsed.length > 0) {
+      content += '\n';
+      report.materialsUsed.forEach((material, index) => {
+        content += `${index + 1}. ${material.item || 'N/A'} - Qty: ${material.quantity || 'N/A'} ${material.unit || ''} - Cost: Ksh${material.cost || '0'}\n`;
+      });
+      content += `\nTotal Materials Cost: Ksh${materialsCost.toLocaleString()}`;
+    } else {
+      content += '\nNo materials used recorded';
+    }
+
+    content += `
+
+Multimedia:
+----------
+Photos Attached: ${report.photos?.length || 0}`;
+    
+    if (report.photos && report.photos.length > 0) {
+      content += '\nPhoto Files:\n';
+      report.photos.forEach((photo, index) => {
+        content += `${index + 1}. ${photo.name || `Photo ${index + 1}`}\n`;
+      });
+    }
+
+    content += `\nVideos Attached: ${report.videos?.length || 0}`;
+    
+    if (report.videos && report.videos.length > 0) {
+      content += '\nVideo Files:\n';
+      report.videos.forEach((video, index) => {
+        content += `${index + 1}. ${video.name || `Video ${index + 1}`}\n`;
+      });
+    }
+
+    if (report.notes) {
+      content += `
+
+Additional Notes:
+----------------
+${report.notes}`;
+    }
+
+    content += `
+
+=====================================
+Report Generated: ${new Date().toLocaleString()}
+=====================================`;
+
+    return content;
+  };
+
+  const downloadAllWorkReports = async () => {
+    if (!workReports || workReports.length === 0) {
+      alert('No work reports available to download');
+      return;
+    }
+
+    try {
+      const zipFile = new JSZip();
+
+      // Add CSV summary
+      const reportData = generateReportData();
+      const csvContent = generateWorkReportsCSVContent(reportData);
+      zipFile.file('work_reports_summary.csv', csvContent);
+
+      // Add individual report documents
+      const reportsFolder = zipFile.folder('individual_reports');
+      
+      // Add media folders
+      const photosFolder = zipFile.folder('photos');
+      const videosFolder = zipFile.folder('videos');
+
+      // Process each report
+      for (let index = 0; index < workReports.length; index++) {
+        const report = workReports[index];
+        
+        // Add text report
+        const reportContent = generateWorkReportDocument(report);
+        const reportFileName = `${String(index + 1).padStart(3, '0')}_${sanitizeFileName(report.projectName || 'project')}_${sanitizeFileName(report.reportDate || report.weekStartDate || 'date')}.txt`;
+        reportsFolder.file(reportFileName, reportContent);
+
+        // Add photos for this report
+        if (report.photos && report.photos.length > 0) {
+          const reportPhotosFolder = photosFolder.folder(`report_${String(index + 1).padStart(3, '0')}_photos`);
+          
+          for (let photoIndex = 0; photoIndex < report.photos.length; photoIndex++) {
+            const photo = report.photos[photoIndex];
+            try {
+              const photoBlob = await downloadMediaFile(photo.url);
+              if (photoBlob) {
+                const photoFileName = `${photoIndex + 1}_${sanitizeFileName(photo.name || `photo_${photoIndex + 1}`)}`;
+                reportPhotosFolder.file(photoFileName, photoBlob);
+              }
+            } catch (error) {
+              console.error(`Error downloading photo ${photoIndex + 1} from report ${index + 1}:`, error);
+              // Add a note about failed download
+              reportPhotosFolder.file(`${photoIndex + 1}_FAILED_TO_DOWNLOAD.txt`, 
+                `Failed to download: ${photo.name || `photo_${photoIndex + 1}`}\nOriginal URL: ${photo.url}\nError: ${error.message}`);
+            }
+          }
+        }
+
+        // Add videos for this report
+        if (report.videos && report.videos.length > 0) {
+          const reportVideosFolder = videosFolder.folder(`report_${String(index + 1).padStart(3, '0')}_videos`);
+          
+          for (let videoIndex = 0; videoIndex < report.videos.length; videoIndex++) {
+            const video = report.videos[videoIndex];
+            try {
+              const videoBlob = await downloadMediaFile(video.url);
+              if (videoBlob) {
+                const videoFileName = `${videoIndex + 1}_${sanitizeFileName(video.name || `video_${videoIndex + 1}`)}`;
+                reportVideosFolder.file(videoFileName, videoBlob);
+              }
+            } catch (error) {
+              console.error(`Error downloading video ${videoIndex + 1} from report ${index + 1}:`, error);
+              // Add a note about failed download
+              reportVideosFolder.file(`${videoIndex + 1}_FAILED_TO_DOWNLOAD.txt`, 
+                `Failed to download: ${video.name || `video_${videoIndex + 1}`}\nOriginal URL: ${video.url}\nError: ${error.message}`);
+            }
+          }
+        }
+      }
+
+      // Add a README file explaining the archive structure
+      const readmeContent = generateArchiveReadme();
+      zipFile.file('README.txt', readmeContent);
+
+      // Generate and download ZIP file
+      const blob = await zipFile.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      });
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `complete_work_reports_${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      alert('Download complete! Archive includes all reports, photos, and videos.');
+    } catch (error) {
+      console.error('Error creating ZIP file:', error);
+      alert('Error creating download file. This may be due to large file sizes or network issues. Please try downloading individual reports or check your internet connection.');
+    }
+  };
+
+  const downloadMediaFile = async (url) => {
+    try {
+      // Handle blob URLs (temporary URLs created from File objects)
+      if (url.startsWith('blob:')) {
+        const response = await fetch(url);
+        return await response.blob();
+      }
+      
+      // Handle regular URLs (Firebase Storage, etc.)
+      const response = await fetch(url, { mode: 'cors' });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.blob();
+    } catch (error) {
+      console.error('Error downloading media file:', error);
+      return null;
+    }
+  };
+
+  const sanitizeFileName = (fileName) => {
+    // Remove or replace invalid filename characters
+    return fileName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim();
+  };
+
+  const generateArchiveReadme = () => {
+    return `
+WORK REPORTS ARCHIVE
+===================
+
+Generated: ${new Date().toLocaleString()}
+Total Reports: ${workReports.length}
+
+ARCHIVE STRUCTURE:
+-----------------
+
+📁 work_reports_summary.csv
+   Complete data export in CSV format (no media files)
+
+📁 individual_reports/
+   Text documents for each work report containing:
+   - Report details and metadata
+   - Work descriptions and tasks
+   - Materials used and costs
+   - Labor and equipment information
+   - Challenges and recommendations
+   - Notes on attached media files
+
+📁 photos/
+   📁 report_001_photos/
+      Photo files from Report #001
+   📁 report_002_photos/
+      Photo files from Report #002
+   (etc.)
+
+📁 videos/
+   📁 report_001_videos/
+      Video files from Report #001
+   📁 report_002_videos/
+      Video files from Report #002
+   (etc.)
+
+NOTES:
+------
+- Each report is numbered sequentially (001, 002, etc.)
+- Media files are organized by report number
+- If a media file failed to download, a .txt file explains the error
+- Report text documents reference which media files belong to each report
+- All timestamps are in local time zone
+
+For questions about this archive, contact the system administrator.
+`;
+  };
+
+  const generateWorkReportsCSVContent = (reportData) => {
+    const headers = [
+      'Report ID', 'Report Type', 'Project Name', 'Date/Period', 'Submitted By',
+      'Submitted At', 'Status', 'Work Description', 'Tasks Completed', 'Tasks In Progress',
+      'Tasks Planned', 'Workers Present', 'Work Hours', 'Labor Details', 'Equipment Used',
+      'Weather Conditions', 'Challenges', 'Recommendations', 'Total Materials Cost',
+      'Photos Count', 'Videos Count', 'Additional Notes'
+    ];
+
+    const csvData = reportData.data.map(report => {
+      const materialsCost = report.materialsUsed?.reduce((total, material) => 
+        total + (parseFloat(material.cost) || 0), 0) || 0;
+      
+      return [
+        report.id || '',
+        report.reportType || '',
+        report.projectName || '',
+        report.reportType === 'daily' ? report.reportDate || '' : `${report.weekStartDate || ''} to ${report.weekEndDate || ''}`,
+        report.submittedBy || '',
+        report.submittedAt ? new Date(report.submittedAt).toLocaleString() : '',
+        report.status || '',
+        `"${(report.workDescription || '').replace(/"/g, '""')}"`,
+        `"${(report.tasksCompleted || '').replace(/"/g, '""')}"`,
+        `"${(report.tasksInProgress || '').replace(/"/g, '""')}"`,
+        `"${(report.tasksPlanned || '').replace(/"/g, '""')}"`,
+        report.workersPresent || '',
+        report.workHours || '',
+        `"${(report.laborDetails || '').replace(/"/g, '""')}"`,
+        `"${(report.equipmentUsed || '').replace(/"/g, '""')}"`,
+        report.weatherConditions || '',
+        `"${(report.challenges || '').replace(/"/g, '""')}"`,
+        `"${(report.recommendations || '').replace(/"/g, '""')}"`,
+        materialsCost,
+        report.photos?.length || 0,
+        report.videos?.length || 0,
+        `"${(report.notes || '').replace(/"/g, '""')}"`
+      ];
+    });
+
+    return "\uFEFF" + headers.join(",") + "\n" + csvData.map(row => row.join(",")).join("\n");
   };
 
   const renderRequisitions = () => (
@@ -930,13 +1879,14 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                 <th>Requester Name</th>
                 <th>Items</th>
                 <th>Quantity</th>
+                <th>Unit Price (Ksh)</th>
+                <th>Total Cost (Ksh)</th>
                 <th>Project Name</th>
                 <th>Category</th>
-                <th>Item</th>
                 <th>Reason for Request</th>
                 <th>Request Date</th>
                 <th>Status</th>
-                <th>Change Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -945,9 +1895,14 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                   <td>{req.name}</td>
                   <td>{req.items}</td>
                   <td>{req.quantity}</td>
+                  <td>{req.unitPrice ? `Ksh${req.unitPrice.toLocaleString()}` : 'Not specified'}</td>
+                  <td>
+                    <strong>
+                      Ksh{((req.cost || req.price || (req.quantity * (req.unitPrice || 0))) || 0).toLocaleString()}
+                    </strong>
+                  </td>
                   <td>{req.projectName}</td>
                   <td>{req.category}</td>
-                  <td>{req.items}</td>
                   <td>{req.reasonForRequest}</td>
                   <td>{req.date}</td>
                   <td>
@@ -1083,6 +2038,76 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     </div>
   );
 
+  const renderVisitorManagement = () => (
+    <div className="section-content">
+      <div className="card">
+        <div className="card-header">
+          <h3>Visitor Management</h3>
+          <div className="summary-stats" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <div className="stat-item">
+              <span className="stat-label">Total Visitors Today:</span>
+              <span className="stat-value">{visitors.filter(v => {
+                const today = new Date().toDateString();
+                const visitDate = new Date(v.checkInTime?.seconds ? v.checkInTime.seconds * 1000 : v.checkInTime).toDateString();
+                return visitDate === today;
+              }).length}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Currently On Site:</span>
+              <span className="stat-value">{visitors.filter(v => !v.checkOutTime).length}</span>
+            </div>
+          </div>
+        </div>
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Company</th>
+                <th>Host</th>
+                <th>Reason for Visit</th>
+                <th>ID Number</th>
+                <th>Phone</th>
+                <th>Check-in Time</th>
+                <th>Check-out Time</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredVisitors.map(visitor => (
+                <tr key={visitor.id}>
+                  <td>{visitor.name}</td>
+                  <td>{visitor.company || 'N/A'}</td>
+                  <td>{visitor.host || 'N/A'}</td>
+                  <td>{visitor.reason}</td>
+                  <td>{visitor.idNumber || 'N/A'}</td>
+                  <td>{visitor.phone || 'N/A'}</td>
+                  <td>
+                    {visitor.checkInTime ? 
+                      new Date(visitor.checkInTime.seconds ? visitor.checkInTime.seconds * 1000 : visitor.checkInTime).toLocaleString() 
+                      : 'N/A'
+                    }
+                  </td>
+                  <td>
+                    {visitor.checkOutTime ? 
+                      new Date(visitor.checkOutTime.seconds ? visitor.checkOutTime.seconds * 1000 : visitor.checkOutTime).toLocaleString() 
+                      : 'Still on site'
+                    }
+                  </td>
+                  <td>
+                    <span className={`status-badge ${visitor.checkOutTime ? 'status-completed' : 'status-active'}`}>
+                      {visitor.checkOutTime ? 'Checked Out' : 'On Site'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className={`admin-dashboard ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
       <aside className="sidebar">
@@ -1128,6 +2153,12 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
               </a>
             </li>
             <li>
+              <a href="#" className={activeSection === 'visitors' ? 'active' : ''} onClick={() => setActiveSection('visitors')}>
+                <FaUsers className="nav-icon" />
+                {isSidebarOpen && 'Visitors'}
+              </a>
+            </li>
+            <li>
               <a href="#" className={activeSection === 'reports' ? 'active' : ''} onClick={() => setActiveSection('reports')}>
                 <FaChartLine className="nav-icon" />
                 {isSidebarOpen && 'Reports'}
@@ -1158,11 +2189,264 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
           {activeSection === 'dashboard' && renderDashboard()}
           {activeSection === 'projects' && renderProjectManagement()}
           {activeSection === 'users' && renderUsers()}
+          {activeSection === 'visitors' && renderVisitorManagement()}
           {activeSection === 'reports' && renderReports()}
           {activeSection === 'requisitions' && renderRequisitions()}
           {activeSection === 'stock' && renderStockManagement()}
         </div>
       </main>
+
+      {/* Work Report Details Modal */}
+      {showWorkReportModal && selectedWorkReport && (
+        <div className="modal-overlay" onClick={closeWorkReportModal}>
+          <div className="modal-content large-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Work Report Details</h3>
+              <button className="btn btn-sm btn-secondary" onClick={closeWorkReportModal}>
+                ✕
+              </button>
+            </div>
+            
+            <div className="work-report-details">
+              {/* Report Information */}
+              <div className="report-section">
+                <h4>Report Information</h4>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="label">Report Type:</span>
+                    <span className={`value status-badge status-${selectedWorkReport.reportType}`}>
+                      {selectedWorkReport.reportType?.charAt(0).toUpperCase() + selectedWorkReport.reportType?.slice(1)}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">Project:</span>
+                    <span className="value">{selectedWorkReport.projectName || 'N/A'}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">Date/Period:</span>
+                    <span className="value">
+                      {selectedWorkReport.reportType === 'daily' 
+                        ? selectedWorkReport.reportDate 
+                        : `${selectedWorkReport.weekStartDate} to ${selectedWorkReport.weekEndDate}`
+                      }
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">Submitted By:</span>
+                    <span className="value">{selectedWorkReport.submittedBy}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">Submitted At:</span>
+                    <span className="value">
+                      {selectedWorkReport.submittedAt 
+                        ? new Date(selectedWorkReport.submittedAt).toLocaleString()
+                        : 'N/A'
+                      }
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">Status:</span>
+                    <span className={`value status-badge status-${selectedWorkReport.status}`}>
+                      {selectedWorkReport.status?.charAt(0).toUpperCase() + selectedWorkReport.status?.slice(1)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Work Description */}
+              <div className="report-section">
+                <h4>Work Description</h4>
+                <div className="description-content">
+                  <p><strong>Work Done:</strong></p>
+                  <p>{selectedWorkReport.workDescription || 'No description provided'}</p>
+                  
+                  {selectedWorkReport.tasksCompleted && (
+                    <>
+                      <p><strong>Tasks Completed:</strong></p>
+                      <p>{selectedWorkReport.tasksCompleted}</p>
+                    </>
+                  )}
+                  
+                  {selectedWorkReport.tasksInProgress && (
+                    <>
+                      <p><strong>Tasks In Progress:</strong></p>
+                      <p>{selectedWorkReport.tasksInProgress}</p>
+                    </>
+                  )}
+                  
+                  {selectedWorkReport.tasksPlanned && (
+                    <>
+                      <p><strong>Tasks Planned:</strong></p>
+                      <p>{selectedWorkReport.tasksPlanned}</p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Materials Used */}
+              {selectedWorkReport.materialsUsed && selectedWorkReport.materialsUsed.length > 0 && (
+                <div className="report-section">
+                  <h4>Materials Used</h4>
+                  <div className="table-container">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th>Quantity</th>
+                          <th>Unit</th>
+                          <th>Cost (Ksh)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedWorkReport.materialsUsed.map((material, index) => (
+                          <tr key={index}>
+                            <td>{material.item || 'N/A'}</td>
+                            <td>{material.quantity || 'N/A'}</td>
+                            <td>{material.unit || 'N/A'}</td>
+                            <td>{material.cost ? `Ksh${parseFloat(material.cost).toLocaleString()}` : 'N/A'}</td>
+                          </tr>
+                        ))}
+                        <tr className="total-row">
+                          <td colSpan="3"><strong>Total Materials Cost:</strong></td>
+                          <td>
+                            <strong>
+                              Ksh{selectedWorkReport.materialsUsed.reduce((total, material) => 
+                                total + (parseFloat(material.cost) || 0), 0
+                              ).toLocaleString()}
+                            </strong>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Labor and Equipment */}
+              <div className="report-section">
+                <h4>Labor and Equipment</h4>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="label">Workers Present:</span>
+                    <span className="value">{selectedWorkReport.workersPresent || 'N/A'}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">Work Hours:</span>
+                    <span className="value">{selectedWorkReport.workHours || 'N/A'}</span>
+                  </div>
+                </div>
+                {selectedWorkReport.laborDetails && (
+                  <div className="description-content">
+                    <p><strong>Labor Details:</strong></p>
+                    <p>{selectedWorkReport.laborDetails}</p>
+                  </div>
+                )}
+                {selectedWorkReport.equipmentUsed && (
+                  <div className="description-content">
+                    <p><strong>Equipment Used:</strong></p>
+                    <p>{selectedWorkReport.equipmentUsed}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Conditions and Challenges */}
+              <div className="report-section">
+                <h4>Conditions and Challenges</h4>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="label">Weather Conditions:</span>
+                    <span className="value">{selectedWorkReport.weatherConditions || 'N/A'}</span>
+                  </div>
+                </div>
+                {selectedWorkReport.challenges && (
+                  <div className="description-content">
+                    <p><strong>Challenges Faced:</strong></p>
+                    <p>{selectedWorkReport.challenges}</p>
+                  </div>
+                )}
+                {selectedWorkReport.recommendations && (
+                  <div className="description-content">
+                    <p><strong>Recommendations:</strong></p>
+                    <p>{selectedWorkReport.recommendations}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Photos */}
+              {selectedWorkReport.photos && selectedWorkReport.photos.length > 0 && (
+                <div className="report-section">
+                  <h4>Photos ({selectedWorkReport.photos.length})</h4>
+                  <div className="media-gallery">
+                    {selectedWorkReport.photos.map((photo, index) => (
+                      <div key={index} className="media-item">
+                        <img 
+                          src={photo.url} 
+                          alt={photo.name || `Photo ${index + 1}`}
+                          className="report-image"
+                          onClick={() => window.open(photo.url, '_blank')}
+                        />
+                        <div className="media-info">
+                          <span className="media-name">{photo.name || `Photo ${index + 1}`}</span>
+                          {photo.size && (
+                            <span className="media-size">
+                              {(photo.size / 1024 / 1024).toFixed(2)} MB
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Videos */}
+              {selectedWorkReport.videos && selectedWorkReport.videos.length > 0 && (
+                <div className="report-section">
+                  <h4>Videos ({selectedWorkReport.videos.length})</h4>
+                  <div className="media-gallery">
+                    {selectedWorkReport.videos.map((video, index) => (
+                      <div key={index} className="media-item">
+                        <video 
+                          controls 
+                          className="report-video"
+                          preload="metadata"
+                        >
+                          <source src={video.url} type={video.type || 'video/mp4'} />
+                          Your browser does not support the video tag.
+                        </video>
+                        <div className="media-info">
+                          <span className="media-name">{video.name || `Video ${index + 1}`}</span>
+                          {video.size && (
+                            <span className="media-size">
+                              {(video.size / 1024 / 1024).toFixed(2)} MB
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Notes */}
+              {selectedWorkReport.notes && (
+                <div className="report-section">
+                  <h4>Additional Notes</h4>
+                  <div className="description-content">
+                    <p>{selectedWorkReport.notes}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={closeWorkReportModal}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

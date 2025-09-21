@@ -1,0 +1,141 @@
+/* GateOfficerStyles.css */
+
+/* Layout: place sidebar and content side-by-side */
+.admin-dashboard {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Ensure main content stretches and scrolls nicely */
+.main-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Professional summary cards for Gate Officer Dashboard */
+.summary-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Container for the set of summary cards */
+.summary-cards {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.summary-cards .summary-card {
+  flex: 1 1 260px; /* responsive card width */
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border-color: #cbd5e1;
+}
+
+.summary-card .summary-icon {
+  font-size: 2.5rem;
+  padding: 15px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summary-card .summary-content h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #475569;
+  margin: 0 0 5px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-card .summary-content .summary-value {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1;
+  margin: 0;
+}
+
+/* Card-specific colors */
+.summary-card.workers-in .summary-icon {
+  background-color: #e0f2fe;
+  color: #0ea5e9;
+}
+.summary-card.workers-in .summary-content .summary-value {
+  color: #0369a1;
+}
+
+.summary-card.workers-out .summary-icon {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+.summary-card.workers-out .summary-content .summary-value {
+  color: #475569;
+}
+
+.summary-card.visitors-today .summary-icon {
+    background-color: #f0fdf4;
+    color: #22c55e;
+}
+.summary-card.visitors-today .summary-content .summary-value {
+    color: #16a34a;
+}
+
+.search-and-add {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* Header spacing aligns with AdminDashboard */
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+/* Table polish */
+.data-table th,
+.data-table td {
+  padding: 12px 14px;
+}
+
+.data-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+/* Subtle row accents based on state (optional) */
+.data-table tr .status-badge.status-approved {
+  border: 1px solid #bbf7d0;
+}
+
+.data-table tr .status-badge.status-declined {
+  border: 1px solid #fecaca;
+}
+
+/* Status badge tweaks for better contrast */
+.status-badge.status-declined {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.status-badge.status-approved {
+  background-color: #f0fdf4;
+  color: #16a34a;
+}

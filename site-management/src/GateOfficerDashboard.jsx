@@ -2,17 +2,50 @@ import React, { useState, useEffect } from 'react';
 import { getAuth, signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { FaHome, FaSignOutAlt, FaBars, FaSearch, FaTimes, FaUsers, FaPlus, FaHistory, FaFileAlt, FaDownload } from 'react-icons/fa';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { storage, db } from './firebase';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, getDocs } from 'firebase/firestore';
+import { db } from './firebase';
 import logo from './assets/logo.jpeg';
 import './AdminDashboard.css';
+import './GateOfficerStyles.css';
 
 const mockWorkers = [
   { id: 'worker1', name: 'John Doe', status: 'out', history: [] },
   { id: 'worker2', name: 'Jane Smith', status: 'out', history: [] },
   { id: 'worker3', name: 'Peter Jones', status: 'out', history: [] },
   { id: 'worker4', name: 'Mary Williams', status: 'out', history: [] },
+];
+
+const mockVisitors = [
+  {
+    id: 'visitor1',
+    name: 'Robert Johnson',
+    company: 'ABC Engineering',
+    host: 'Mike Chen',
+    reason: 'Site inspection meeting',
+    idNumber: 'ID123456789',
+    phone: '+1-555-0123',
+    checkInTime: new Date('2025-09-21T08:30:00')
+  },
+  {
+    id: 'visitor2',
+    name: 'Sarah Williams',
+    company: 'Quality Assurance Ltd',
+    host: 'Lisa Park',
+    reason: 'Quality control audit',
+    idNumber: 'QA987654321',
+    phone: '+1-555-0456',
+    checkInTime: new Date('2025-09-21T09:15:00')
+  },
+  {
+    id: 'visitor3',
+    name: 'David Brown',
+    company: 'Materials Supply Co.',
+    host: 'Tom Wilson',
+    reason: 'Material delivery coordination',
+    idNumber: 'MS456789123',
+    phone: '+1-555-0789',
+    checkInTime: new Date('2025-09-21T10:00:00')
+  }
 ];
 
 export default function GateOfficerDashboard({ currentUserData }) {
@@ -30,6 +63,42 @@ export default function GateOfficerDashboard({ currentUserData }) {
   const [reportType, setReportType] = useState('daily');
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // New state for visitors
+  const [visitors, setVisitors] = useState([]);
+  const [showAddVisitorModal, setShowAddVisitorModal] = useState(false);
+  const [newVisitorName, setNewVisitorName] = useState('');
+  const [newVisitorReason, setNewVisitorReason] = useState('');
+  const [newVisitorCompany, setNewVisitorCompany] = useState('');
+  const [newVisitorHost, setNewVisitorHost] = useState('');
+  const [newVisitorPhone, setNewVisitorPhone] = useState('');
+  const [newVisitorIdNumber, setNewVisitorIdNumber] = useState('');
+  const [newVisitorCheckInTime, setNewVisitorCheckInTime] = useState('');
+  const [visitorSearchQuery, setVisitorSearchQuery] = useState('');
+  const [filteredVisitors, setFilteredVisitors] = useState([]);
+
+  // Fetch visitors from Firebase
+  useEffect(() => {
+    const fetchVisitors = async () => {
+      try {
+        const visitorsCollection = collection(db, 'visitors');
+        const visitorSnapshot = await getDocs(visitorsCollection);
+        const visitorList = visitorSnapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data(),
+          checkInTime: doc.data().checkInTime?.toDate ? doc.data().checkInTime.toDate() : new Date(doc.data().checkInTime),
+          checkOutTime: doc.data().checkOutTime?.toDate ? doc.data().checkOutTime.toDate() : (doc.data().checkOutTime ? new Date(doc.data().checkOutTime) : null)
+        }));
+        setVisitors(visitorList);
+      } catch (error) {
+        console.error('Error fetching visitors:', error);
+        // Fallback to mock data if Firebase fails
+        setVisitors(mockVisitors);
+      }
+    };
+
+    fetchVisitors();
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -53,6 +122,14 @@ export default function GateOfficerDashboard({ currentUserData }) {
     );
     setFilteredWorkers(filtered);
   }, [searchQuery, workers]);
+
+  useEffect(() => {
+    const search = visitorSearchQuery.toLowerCase();
+    const filtered = visitors.filter(visitor =>
+      visitor.name.toLowerCase().includes(search)
+    );
+    setFilteredVisitors(filtered);
+  }, [visitorSearchQuery, visitors]);
 
   const handleNavClick = (section) => {
     setActiveSection(section);
@@ -101,6 +178,70 @@ export default function GateOfficerDashboard({ currentUserData }) {
     setShowAddWorkerModal(false);
   };
 
+  const handleAddNewVisitor = async (e) => {
+    e.preventDefault();
+    if (newVisitorName.trim() === '' || newVisitorReason.trim() === '') return;
+    
+    const checkInTime = newVisitorCheckInTime ? new Date(newVisitorCheckInTime) : new Date();
+    
+    const newVisitor = {
+      name: newVisitorName,
+      reason: newVisitorReason,
+      company: newVisitorCompany,
+      host: newVisitorHost,
+      phone: newVisitorPhone,
+      idNumber: newVisitorIdNumber,
+      checkInTime: checkInTime,
+      checkOutTime: null,
+      status: 'On-site',
+      createdAt: serverTimestamp()
+    };
+
+    try {
+      // Save to Firebase
+      const docRef = await addDoc(collection(db, 'visitors'), newVisitor);
+      
+      // Update local state with Firebase-generated ID
+      const visitorWithId = { ...newVisitor, id: docRef.id };
+      setVisitors([...visitors, visitorWithId]);
+      
+      console.log('Visitor added successfully with ID:', docRef.id);
+    } catch (error) {
+      console.error('Error adding visitor:', error);
+    }
+
+    setNewVisitorName('');
+    setNewVisitorReason('');
+    setNewVisitorCompany('');
+    setNewVisitorHost('');
+    setNewVisitorPhone('');
+    setNewVisitorIdNumber('');
+    setNewVisitorCheckInTime('');
+    setShowAddVisitorModal(false);
+  };
+
+  const handleCheckOutVisitor = async (visitorId) => {
+    try {
+      // Update Firebase document with checkout time and status
+      const visitorRef = doc(db, 'visitors', visitorId);
+      await updateDoc(visitorRef, {
+        checkOutTime: new Date(),
+        status: 'Checked out'
+      });
+      
+      // Update local state
+      setVisitors(visitors.map(v => 
+        v.id === visitorId 
+          ? { ...v, checkOutTime: new Date(), status: 'Checked out' }
+          : v
+      ));
+      
+      console.log('Visitor checked out successfully');
+    } catch (error) {
+      console.error('Error checking out visitor:', error);
+    }
+  };
+
   const handleViewHistory = (worker) => {
     setSelectedWorkerHistory(worker);
     setShowHistoryModal(true);
@@ -130,25 +271,53 @@ export default function GateOfficerDashboard({ currentUserData }) {
     }
 
     setIsUploading(true);
-    const fileRef = ref(storage, `attendance-reports/${reportType}/${selectedFile.name}`);
     
     try {
-      const snapshot = await uploadBytes(fileRef, selectedFile);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-
-      await addDoc(collection(db, 'attendanceReports'), {
+      console.log('Starting file upload to Firestore...', selectedFile.name);
+      
+      // Read file content as text
+      const fileContent = await selectedFile.text();
+      
+      // Create a unique filename to avoid conflicts
+      const timestamp = new Date().getTime();
+      const fileName = `${timestamp}_${selectedFile.name}`;
+      
+      // Save file content and metadata directly to Firestore
+      const docRef = await addDoc(collection(db, 'attendanceReports'), {
         name: selectedFile.name,
+        originalName: selectedFile.name,
+        fileName: fileName,
         type: reportType,
-        url: downloadURL,
+        content: fileContent, // Store file content directly in Firestore
+        size: selectedFile.size,
+        mimeType: selectedFile.type,
         uploadedAt: serverTimestamp(),
+        uploadedBy: 'gate-officer',
+        storageMethod: 'firestore' // Flag to indicate storage method
       });
+      
+      console.log('File content saved to Firestore:', docRef.id);
 
       alert(`${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report uploaded successfully!`);
       setSelectedFile(null); 
       document.getElementById('file-input').value = null;
+      
+      // Update report data for preview
+      setReportData({
+        name: selectedFile.name,
+        content: fileContent.substring(0, 500) + (fileContent.length > 500 ? '...' : '')
+      });
+      
     } catch (error) {
-      console.error("Error uploading file:", error);
-      alert("File upload failed. Please try again.");
+      console.error("Detailed error uploading file:", error);
+      
+      if (error.message.includes('quota')) {
+        alert("Upload failed: Storage quota exceeded. Please contact administrator.");
+      } else if (error.message.includes('permission')) {
+        alert("Upload failed: Permission denied. Please contact administrator.");
+      } else {
+        alert(`File upload failed: ${error.message}`);
+      }
     } finally {
       setIsUploading(false);
     }
@@ -180,6 +349,70 @@ export default function GateOfficerDashboard({ currentUserData }) {
     document.body.removeChild(link);
   };
 
+  const renderVisitorManagement = () => (
+    <div className="section-content">
+      <div className="card">
+        <div className="card-header">
+            <h3>Visitor Management</h3>
+            <button className="btn btn-primary" onClick={() => setShowAddVisitorModal(true)}>
+                <FaPlus /> Add Visitor
+            </button>
+        </div>
+        <div className="search-bar" style={{ marginBottom: '20px' }}>
+            <FaSearch className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search visitors..."
+              value={visitorSearchQuery}
+              onChange={(e) => setVisitorSearchQuery(e.target.value)}
+            />
+        </div>
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Company</th>
+                <th>Host</th>
+                <th>Reason for Visit</th>
+                <th>ID Number</th>
+                <th>Phone</th>
+                <th>Check-in Time</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredVisitors.map(visitor => (
+                <tr key={visitor.id}>
+                  <td>{visitor.name}</td>
+                  <td>{visitor.company}</td>
+                  <td>{visitor.host}</td>
+                  <td>{visitor.reason}</td>
+                  <td>{visitor.idNumber}</td>
+                  <td>{visitor.phone}</td>
+                  <td>{visitor.checkInTime.toLocaleString()}</td>
+                  <td>
+                    <span className={`status-badge status-${visitor.status === 'On-site' ? 'approved' : 'completed'}`}>
+                      {visitor.status}
+                    </span>
+                  </td>
+                  <td>
+                    {visitor.status === 'On-site' && (
+                        <button className="btn btn-danger" onClick={() => handleCheckOutVisitor(visitor.id)}>
+                        Check Out
+                        </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderReports = () => (
     <div className="section-content">
       <div className="card">
@@ -197,7 +430,7 @@ export default function GateOfficerDashboard({ currentUserData }) {
             <input type="file" id="file-input" accept=".csv" onChange={handleFileSelect} />
           </div>
           <button className="btn btn-primary" onClick={handleUpload} disabled={!selectedFile || isUploading}>
-            {isUploading ? 'Uploading...' : 'Done'}
+            {isUploading ? 'Uploading...' : 'Add'}
           </button>
         </div>
 
@@ -216,18 +449,25 @@ export default function GateOfficerDashboard({ currentUserData }) {
   const renderDashboard = () => (
     <div className="section-content">
       <div className="summary-cards">
-        <div className="summary-card">
+        <div className="summary-card workers-in">
           <div className="summary-icon"><FaUsers /></div>
           <div className="summary-content">
             <h4>Workers Checked In</h4>
             <p className="summary-value">{workers.filter(w => w.status === 'in').length}</p>
           </div>
         </div>
-        <div className="summary-card">
+        <div className="summary-card workers-out">
           <div className="summary-icon"><FaUsers /></div>
           <div className="summary-content">
             <h4>Workers Checked Out</h4>
             <p className="summary-value">{workers.filter(w => w.status === 'out').length}</p>
+          </div>
+        </div>
+        <div className="summary-card visitors-today">
+          <div className="summary-icon"><FaUsers /></div>
+          <div className="summary-content">
+            <h4>Visitors On-site</h4>
+            <p className="summary-value">{visitors.filter(v => v.status === 'On-site').length}</p>
           </div>
         </div>
       </div>
@@ -311,14 +551,16 @@ export default function GateOfficerDashboard({ currentUserData }) {
         return renderWorkerLog();
       case 'reports':
         return renderReports();
+      case 'visitors':
+        return renderVisitorManagement();
       default:
         return renderDashboard();
     }
   };
 
   return (
-    <div className="admin-dashboard">
-      <aside className={`sidebar ${isSidebarOpen ? 'open' : 'collapsed'}`}>
+    <div className="admin-dashboard" style={{ display: 'flex' }}>
+      <aside className={`sidebar ${isSidebarOpen ? '' : 'collapsed'}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <img src={logo} alt="Collyer logo" />
@@ -333,19 +575,25 @@ export default function GateOfficerDashboard({ currentUserData }) {
             <li>
               <a href="#" className={activeSection === 'dashboard' ? 'active' : ''} onClick={() => handleNavClick('dashboard')}>
                 <FaHome className="nav-icon" />
-                {isSidebarOpen && <span>Dashboard</span>}
+                <span>Dashboard</span>
               </a>
             </li>
             <li>
               <a href="#" className={activeSection === 'worker-log' ? 'active' : ''} onClick={() => handleNavClick('worker-log')}>
                 <FaUsers className="nav-icon" />
-                {isSidebarOpen && <span>Worker Log</span>}
+                <span>Worker Log</span>
+              </a>
+            </li>
+            <li>
+              <a href="#" className={activeSection === 'visitors' ? 'active' : ''} onClick={() => handleNavClick('visitors')}>
+                <FaUsers className="nav-icon" />
+                <span>Visitor Management</span>
               </a>
             </li>
             <li>
               <a href="#" className={activeSection === 'reports' ? 'active' : ''} onClick={() => handleNavClick('reports')}>
                 <FaFileAlt className="nav-icon" />
-                {isSidebarOpen && <span>Reports</span>}
+                <span>Reports</span>
               </a>
             </li>
           </ul>
@@ -365,18 +613,15 @@ export default function GateOfficerDashboard({ currentUserData }) {
           </button>
           <h1>{activeSection.charAt(0).toUpperCase() + activeSection.slice(1).replace('-', ' ')}</h1>
           <div className="header-actions">
-            <div className="search-bar">
-              <FaSearch />
-              <input
-                type="text"
-                placeholder="Search Worker..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div className="user-profile">
+                <img src={logo} alt="User" />
+                <span>{currentUserData?.name}</span>
             </div>
           </div>
         </header>
-        {renderContent()}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {renderContent()}
+        </div>
       </main>
 
       {showAddWorkerModal && (
@@ -401,6 +646,76 @@ export default function GateOfficerDashboard({ currentUserData }) {
                 <button type="submit" className="btn btn-primary">Add Worker</button>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddWorkerModal(false)}>Cancel</button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showAddVisitorModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <span className="close-button" onClick={() => setShowAddVisitorModal(false)}><FaTimes /></span>
+            <h3>Add New Visitor</h3>
+            <form onSubmit={handleAddNewVisitor}>
+              <div className="form-group">
+                <label>Visitor Name</label>
+                <input
+                  type="text"
+                  value={newVisitorName}
+                  onChange={(e) => setNewVisitorName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Company</label>
+                <input
+                  type="text"
+                  value={newVisitorCompany}
+                  onChange={(e) => setNewVisitorCompany(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>Host (Person to Visit)</label>
+                <input
+                  type="text"
+                  value={newVisitorHost}
+                  onChange={(e) => setNewVisitorHost(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>ID Number</label>
+                <input
+                  type="text"
+                  value={newVisitorIdNumber}
+                  onChange={(e) => setNewVisitorIdNumber(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>Contact Number</label>
+                <input
+                  type="text"
+                  value={newVisitorPhone}
+                  onChange={(e) => setNewVisitorPhone(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>Check In Time</label>
+                <input
+                  type="datetime-local"
+                  value={newVisitorCheckInTime}
+                  onChange={(e) => setNewVisitorCheckInTime(e.target.value)}
+                  placeholder="Leave empty for current time"
+                />
+              </div>
+              <div className="form-group">
+                <label>Reason for Visit</label>
+                <textarea
+                  value={newVisitorReason}
+                  onChange={(e) => setNewVisitorReason(e.target.value)}
+                  required
+                ></textarea>
+              </div>
+              <button type="submit" className="btn btn-primary">Add Visitor</button>
             </form>
           </div>
         </div>

@@ -11,6 +11,7 @@ import StockClerkDashboard from './StockClerkDashboard';
 import UserDashboard from './UserDashboard';
 import ForemanDashboard from './ForemanDashboard';
 import GateOfficerDashboard from './GateOfficerDashboard';
+import SiteAgentDashboard from './SiteAgentDashboard';
 import ChangePassword from './ChangePassword';
 import ProtectedRoute from './ProtectedRoute';
 import './App.css';
@@ -126,6 +127,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard projects={projects} addProject={addProject} deleteProject={deleteProject} currentUserData={currentUserData} requisitions={requisitions} updateRequisitionStatus={updateRequisitionStatus} /></ProtectedRoute>} />
+          <Route path="/site-agent" element={<ProtectedRoute><SiteAgentDashboard currentUserData={currentUserData} /></ProtectedRoute>} />
           <Route path="/stock-clerk" element={<ProtectedRoute><StockClerkDashboard currentUserData={currentUserData} /></ProtectedRoute>} />
           <Route path="/user-dashboard" element={<ProtectedRoute><UserDashboard projects={projects} currentUserData={currentUserData} requisitions={requisitions} addRequisition={addRequisition} /></ProtectedRoute>} />
           <Route path="/foreman-dashboard" element={<ProtectedRoute><ForemanDashboard currentUserData={currentUserData} /></ProtectedRoute>} />
