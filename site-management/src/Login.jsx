@@ -72,10 +72,9 @@ export default function Login() {
     <div className="login-container">
       <div className="login-hero">
         <div className="login-logo">
-          <img src={logo} alt="Collyer International Logo" className="login-logo-img" />
+          <img src={logo} alt="Collyer International" className="login-logo-img" />
         </div>
-        <h1 className="login-title">Site Management</h1>
-        <p className="login-subtitle">Welcome! Please log in to continue.</p>
+        <h1 className="login-title">COLLYER INTERNATIONAL</h1>
       </div>
       <form className="login-form" onSubmit={handleSubmit}>
         <label>

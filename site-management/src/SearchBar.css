@@ -3,17 +3,23 @@
     position: relative;
     display: flex;
     align-items: center;
+    gap: 10px; /* Space between icon and input */
 }
 
 .search-icon {
-    position: absolute;
-    left: 15px;
     color: #9e9e9e;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.search-icon:hover {
+    color: #4f46e5;
 }
 
 .search-bar input {
     width: 250px;
-    padding: 10px 10px 10px 40px;
+    padding: 10px 15px; /* Removed left padding since icon is outside */
     border: 1px solid #e0e0e0;
     border-radius: 20px;
     font-size: 1rem;
@@ -24,4 +30,54 @@
     outline: none;
     border-color: #4f46e5;
     box-shadow: 0 0 5px rgba(79, 70, 229, 0.5);
+}
+
+/* Responsive SearchBar */
+@media (max-width: 768px) {
+    .search-bar {
+        gap: 8px; /* Reduced gap on smaller screens */
+    }
+
+    .search-bar input {
+        width: 200px;
+        padding: 8px 12px; /* Removed left padding adjustment */
+        font-size: 0.9rem;
+    }
+
+    .search-icon {
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .search-bar {
+        gap: 6px; /* Even smaller gap on mobile */
+    }
+
+    .search-bar input {
+        width: 150px;
+        padding: 8px 10px; /* Removed left padding adjustment */
+        font-size: 0.85rem;
+        border-radius: 16px;
+    }
+
+    .search-icon {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .search-bar {
+        gap: 5px;
+    }
+    
+    .search-bar input {
+        width: 120px;
+        padding: 6px 8px;
+        font-size: 0.8rem;
+    }
+
+    .search-icon {
+        font-size: 0.85rem;
+    }
 }

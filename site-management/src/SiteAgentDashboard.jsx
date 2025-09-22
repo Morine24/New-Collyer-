@@ -15,6 +15,7 @@ import {
   FaDollarSign, 
   FaDownload, 
   FaBars, 
+  FaTimes,
   FaSignOutAlt, 
   FaCalendarAlt, 
   FaCheck,
@@ -252,17 +253,44 @@ const SiteAgentDashboard = ({ currentUserData }) => {
 
   }, [searchQuery, requisitions, myRequests, personnelRequests, stocks, projects, workReports]);
 
-  // Handle responsive sidebar
+  // Handle responsive sidebar - follows AdminDashboard pattern
   useEffect(() => {
     const handleResize = () => {
-      const isSmall = window.innerWidth < 768;
-      if (!isSmall && !isSidebarOpen) {
+      if (window.innerWidth >= 768) {
+        // Desktop: Keep sidebar open
         setIsSidebarOpen(true);
+      } else {
+        // Mobile: Keep sidebar closed by default
+        setIsSidebarOpen(false);
       }
     };
 
+    // Add event listener
     window.addEventListener('resize', handleResize);
+
+    // Cleanup
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Navigation handler function - follows AdminDashboard pattern
+  const handleNavigation = (section) => {
+    setActiveSection(section);
+    // Close mobile sidebar after navigation
+    if (window.innerWidth <= 768) {
+      setTimeout(() => setIsSidebarOpen(false), 100);
+    }
+  };
+
+  // Close mobile sidebar when clicking outside or changing sections
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (window.innerWidth <= 768 && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, [isSidebarOpen]);
 
   const handleSignOut = async () => {
@@ -272,10 +300,6 @@ const SiteAgentDashboard = ({ currentUserData }) => {
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  };
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
   };
 
   // Requisition handlers
@@ -865,16 +889,16 @@ const SiteAgentDashboard = ({ currentUserData }) => {
   );
 
   return (
-    <div className="admin-dashboard">
+    <div className={`admin-dashboard ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
       {/* Sidebar */}
-      <aside className={`sidebar ${isSidebarOpen ? '' : 'collapsed'}`}>
+      <aside className={`sidebar ${isSidebarOpen ? 'show' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <img src={logo} alt="Logo" />
-            <h1>Site Agent</h1>
+            {isSidebarOpen && <h1>Site Agent</h1>}
           </div>
-          <button className="sidebar-toggle" onClick={toggleSidebar}>
-            <FaBars />
+          <button className="sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+            {isSidebarOpen ? <FaTimes /> : <FaBars />}
           </button>
         </div>
         
@@ -884,7 +908,7 @@ const SiteAgentDashboard = ({ currentUserData }) => {
               <a 
                 href="#" 
                 className={activeSection === 'dashboard' ? 'active' : ''} 
-                onClick={() => setActiveSection('dashboard')}
+                onClick={() => handleNavigation('dashboard')}
               >
                 <FaHome className="nav-icon" />
                 <span>Dashboard</span>
@@ -894,7 +918,7 @@ const SiteAgentDashboard = ({ currentUserData }) => {
               <a 
                 href="#" 
                 className={activeSection === 'requisitions' ? 'active' : ''} 
-                onClick={() => setActiveSection('requisitions')}
+                onClick={() => handleNavigation('requisitions')}
               >
                 <FaClipboardList className="nav-icon" />
                 <span>Requisitions</span>
@@ -904,7 +928,7 @@ const SiteAgentDashboard = ({ currentUserData }) => {
               <a 
                 href="#" 
                 className={activeSection === 'labor' ? 'active' : ''} 
-                onClick={() => setActiveSection('labor')}
+                onClick={() => handleNavigation('labor')}
               >
                 <FaUsers className="nav-icon" />
                 <span>Labor Management</span>
@@ -914,7 +938,7 @@ const SiteAgentDashboard = ({ currentUserData }) => {
               <a 
                 href="#" 
                 className={activeSection === 'stock' ? 'active' : ''} 
-                onClick={() => setActiveSection('stock')}
+                onClick={() => handleNavigation('stock')}
               >
                 <FaBox className="nav-icon" />
                 <span>Stock Management</span>
@@ -924,7 +948,7 @@ const SiteAgentDashboard = ({ currentUserData }) => {
               <a 
                 href="#" 
                 className={activeSection === 'reports' ? 'active' : ''} 
-                onClick={() => setActiveSection('reports')}
+                onClick={() => handleNavigation('reports')}
               >
                 <FaFileAlt className="nav-icon" />
                 <span>Reports</span>
@@ -941,11 +965,23 @@ const SiteAgentDashboard = ({ currentUserData }) => {
         </div>
       </aside>
 
+      {/* Mobile Sidebar Backdrop */}
+      <div 
+        className={`sidebar-backdrop ${isSidebarOpen ? 'show' : ''}`}
+        onClick={() => setIsSidebarOpen(false)}
+      ></div>
+
       {/* Main Content */}
       <main className="main-content">
         <header className="main-header">
           <h1>{activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</h1>
           <div className="header-actions">
+            <button 
+              className="mobile-menu-button"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              {isSidebarOpen ? <FaTimes /> : <FaBars />}
+            </button>
             <SearchBar 
               searchQuery={searchQuery} 
               setSearchQuery={setSearchQuery} 

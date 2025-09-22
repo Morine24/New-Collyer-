@@ -148,6 +148,41 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
     }
   };
 
+  // Responsive behavior handler
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        // Desktop: Keep sidebar open
+        setIsSidebarOpen(true);
+      } else {
+        // Mobile: Keep sidebar closed by default
+        setIsSidebarOpen(false);
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Navigation handler function
+  const handleNavigation = (section) => {
+    setActiveSection(section);
+    // Close mobile sidebar after navigation
+    if (window.innerWidth <= 768) {
+      setTimeout(() => setIsSidebarOpen(false), 100);
+    }
+  };
+
+  // Close mobile sidebar when clicking outside or changing sections
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  }, [activeSection]);
+
   // New useEffect to fetch visitors from Firestore
   useEffect(() => {
     const fetchVisitors = async () => {
@@ -714,7 +749,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                 <h3>{project.name}</h3>
               </div>
               <div className="pie-chart-container">
-                <div className="pie-chart" style={{ background: `conic-gradient(#4caf50 ${project.budget > 0 ? Math.min(100, (calculateProjectCost(project.name) / project.budget) * 100) : 0}%, #e0e0e0 0)` }}>
+                <div className="pie-chart" style={{ background: `conic-gradient(#4caf50 ${project.budget > 0 ? Math.min(100, (calculateProjectCost(project.name) / project.budget) * 100) : 0}%, #3498db 0)` }}>
                   <span className="pie-chart-label">{getProjectProgress(project.name).toFixed(0)}%</span>
                 </div>
               </div>
@@ -724,7 +759,7 @@ export default function CleanAdminDashboard({ currentUserData, requisitions, upd
                   <span>Spent</span>
                 </div>
                 <div className="legend-item">
-                  <div className="legend-color" style={{ backgroundColor: '#e0e0e0' }}></div>
+                  <div className="legend-color" style={{ backgroundColor: '#3498db' }}></div>
                   <span>Remaining</span>
                 </div>
               </div>
@@ -2111,56 +2146,84 @@ For questions about this archive, contact the system administrator.
 
   return (
     <div className={`admin-dashboard ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
-      <aside className="sidebar">
+      <aside className={`sidebar ${isSidebarOpen ? 'show' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <img src={logo} alt="Logo" />
             {isSidebarOpen && <h1>Admin</h1>}
           </div>
           <button className="sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            <FaBars />
+            {isSidebarOpen ? <FaTimes /> : <FaBars />}
           </button>
         </div>
         <nav className="sidebar-nav">
           <ul>
             <li>
-              <a href="#" className={activeSection === 'dashboard' ? 'active' : ''} onClick={() => setActiveSection('dashboard')}>
+              <a href="#" className={activeSection === 'dashboard' ? 'active' : ''} onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleNavigation('dashboard');
+              }}>
                 <FaHome className="nav-icon" />
                 {isSidebarOpen && 'Dashboard'}
               </a>
             </li>
             <li>
-              <a href="#" className={activeSection === 'projects' ? 'active' : ''} onClick={() => setActiveSection('projects')}>
+              <a href="#" className={activeSection === 'projects' ? 'active' : ''} onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleNavigation('projects');
+              }}>
                 <FaProjectDiagram className="nav-icon" />
                 {isSidebarOpen && 'Projects'}
               </a>
             </li>
             <li>
-              <a href="#" className={activeSection === 'requisitions' ? 'active' : ''} onClick={() => setActiveSection('requisitions')}>
+              <a href="#" className={activeSection === 'requisitions' ? 'active' : ''} onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleNavigation('requisitions');
+              }}>
                 <FaClipboardList className="nav-icon" />
                 {isSidebarOpen && 'Requisitions'}
               </a>
             </li>
             <li>
-              <a href="#" className={activeSection === 'users' ? 'active' : ''} onClick={() => setActiveSection('users')}>
+              <a href="#" className={activeSection === 'users' ? 'active' : ''} onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleNavigation('users');
+              }}>
                 <FaUsers className="nav-icon" />
                 {isSidebarOpen && 'Users'}
               </a>
             </li>
             <li>
-              <a href="#" className={activeSection === 'stock' ? 'active' : ''} onClick={() => setActiveSection('stock')}>
+              <a href="#" className={activeSection === 'stock' ? 'active' : ''} onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleNavigation('stock');
+              }}>
                 <FaBox className="nav-icon" />
                 {isSidebarOpen && 'Stock Management'}
               </a>
             </li>
             <li>
-              <a href="#" className={activeSection === 'visitors' ? 'active' : ''} onClick={() => setActiveSection('visitors')}>
+              <a href="#" className={activeSection === 'visitors' ? 'active' : ''} onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleNavigation('visitors');
+              }}>
                 <FaUsers className="nav-icon" />
                 {isSidebarOpen && 'Visitors'}
               </a>
             </li>
             <li>
-              <a href="#" className={activeSection === 'reports' ? 'active' : ''} onClick={() => setActiveSection('reports')}>
+              <a href="#" className={activeSection === 'reports' ? 'active' : ''} onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleNavigation('reports');
+              }}>
                 <FaChartLine className="nav-icon" />
                 {isSidebarOpen && 'Reports'}
               </a>
@@ -2175,16 +2238,30 @@ For questions about this archive, contact the system administrator.
         </div>
       </aside>
 
+      {/* Mobile Sidebar Backdrop */}
+      {isSidebarOpen && (
+        <div 
+          className={`sidebar-backdrop ${isSidebarOpen ? 'show' : ''}`}
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
       <main className="main-content">
         <header className="main-header">
-          <h1>{activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</h1>
           <div className="header-actions">
+            <button 
+              className="mobile-menu-button"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              {isSidebarOpen ? <FaTimes /> : <FaBars />}
+            </button>
             <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
             <div className="user-profile">
               <img src={logo} alt="User" />
               <span>{currentUserData?.name}</span>
             </div>
           </div>
+          <h1>{activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</h1>
         </header>
         <div className="content-wrapper">
           {activeSection === 'dashboard' && renderDashboard()}

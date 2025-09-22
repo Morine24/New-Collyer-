@@ -1,5 +1,23 @@
 /* AdminDashboard.css */
 
+/* Mobile-first global resets */
+@media (max-width: 768px) {
+    html, body {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    #root {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}
+
 /* Status badges for different types */
 .status-daily {
   background-color: #3498db !important;
@@ -366,6 +384,17 @@ body {
 .admin-dashboard {
     display: flex;
     height: 100vh;
+    width: 100%;
+}
+
+/* Mobile layout override */
+@media (max-width: 768px) {
+    .admin-dashboard {
+        display: block !important; /* Override flex layout on mobile */
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+    }
 }
 
 /* Sidebar styles */
@@ -520,6 +549,39 @@ body {
     /* margin-left: 250px; */ /* Default margin for open sidebar */
 }
 
+/* Mobile override for main content */
+@media (max-width: 768px) {
+    .main-content {
+        flex: none !important; /* Remove flex constraints */
+        flex-grow: unset !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        min-height: 100vh !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        padding: 10px !important; /* Reduced padding for mobile */
+        margin: 0 !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Ensure content wrapper also takes full width */
+    .content-wrapper {
+        width: 100% !important;
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Mobile header adjustments */
+    .main-header {
+        padding: 10px 0 !important;
+        margin-bottom: 15px !important;
+    }
+}
+
 .main-content.shifted {
     margin-left: 80px; /* Margin for collapsed sidebar */
 }
@@ -672,10 +734,90 @@ body {
 }
 
 /* Dashboard summary cards */
+.dashboard-content {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
 .summary-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 20px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* Mobile-first responsive grid */
+@media (max-width: 768px) {
+    .summary-cards {
+        grid-template-columns: 1fr !important;
+        gap: 15px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .summary-cards {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+        padding: 0 5px !important;
+    }
+
+    .main-content {
+        padding: 5px !important;
+    }
+
+    .summary-card {
+        padding: 12px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .pie-chart {
+        width: 100px !important;
+        height: 100px !important;
+    }
+
+    .metric-label,
+    .metric-value {
+        font-size: 0.8rem !important;
+    }
+
+    .main-header h1 {
+        font-size: 1.2rem !important;
+    }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 360px) {
+    .main-content {
+        padding: 3px !important;
+    }
+
+    .summary-card {
+        padding: 8px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .pie-chart {
+        width: 80px !important;
+        height: 80px !important;
+    }
+
+    .metric-label,
+    .metric-value {
+        font-size: 0.75rem !important;
+    }
+
+    .chart-legend {
+        gap: 8px !important;
+        font-size: 0.75rem !important;
+    }
+
+    .card-header h3 {
+        font-size: 1rem !important;
+    }
 }
 
 .summary-card {
@@ -2508,5 +2650,693 @@ body {
     
     .cost-section .table-container {
         overflow-x: auto;
+    }
+}
+
+/* =============================================
+   COMPREHENSIVE RESPONSIVE DESIGN IMPROVEMENTS
+   ============================================= */
+
+/* Mobile-First Approach - Base Styles */
+.admin-dashboard {
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Mobile Navigation Overlay */
+@media (max-width: 768px) {
+    .admin-dashboard {
+        position: relative;
+        display: block !important; /* Change from flex to block on mobile */
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Mobile Sidebar - Completely Hidden by Default */
+    .sidebar {
+        display: none !important; /* Completely remove from layout */
+    }
+
+    /* Mobile Sidebar - Show as Overlay When Active */
+    .sidebar.show {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        height: 100vh !important;
+        width: 280px !important;
+        z-index: 1000 !important;
+        transform: translateX(0) !important;
+        transition: transform 0.3s ease-in-out !important;
+        background: #2c3e50 !important; /* Dark navy blue like in the image */
+        box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3) !important;
+        overflow-y: auto !important;
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    /* Sidebar Backdrop */
+    .sidebar-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .sidebar-backdrop.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Mobile Main Content - Full Width */
+    .main-content {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        flex: none !important;
+        position: relative !important;
+        min-height: 100vh !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Mobile Header */
+    .main-header {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        margin-bottom: 15px !important;
+        position: sticky !important;
+        top: 0 !important;
+        background: #fff !important;
+        z-index: 100 !important;
+        padding: 15px 10px !important;
+        border-bottom: 1px solid #e0e0e0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .main-header h1 {
+        font-size: 1.3rem !important;
+        order: 2;
+        text-align: center;
+        width: 100%;
+    }
+
+    .header-actions {
+        display: flex !important;
+        order: 1 !important;
+        width: 100% !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Mobile Menu Button */
+    .mobile-menu-button {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: #4f46e5 !important;
+        border: none !important;
+        font-size: 1.8rem !important;
+        cursor: pointer !important;
+        padding: 12px !important;
+        border-radius: 8px !important;
+        color: white !important;
+        min-width: 48px !important;
+        min-height: 48px !important;
+        margin-right: 10px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        flex-shrink: 0 !important;
+    }
+
+    .mobile-menu-button:hover {
+        background-color: #3730a3 !important;
+        transform: scale(1.05) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .mobile-menu-button:active {
+        transform: scale(0.95) !important;
+        background-color: #312e81 !important;
+    }
+
+    /* Search Bar Mobile */
+    .search-bar {
+        margin: 0 !important;
+        flex-grow: 1 !important;
+        max-width: 150px !important;
+        min-width: 100px !important;
+    }
+
+    .search-bar input {
+        width: 100% !important;
+        font-size: 14px !important;
+        padding: 8px 10px !important;
+        border-radius: 6px !important;
+        border: 1px solid #ddd !important;
+    }
+
+    /* User Profile Mobile */
+    .user-profile {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .user-profile img {
+        height: 32px !important;
+        width: 32px !important;
+    }
+
+    .user-profile span {
+        font-size: 0.9rem;
+        display: none; /* Hide username on very small screens */
+    }
+}
+
+/* Tablet Responsive Styles */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .main-content {
+        padding: 20px;
+    }
+
+    .main-header h1 {
+        font-size: 1.6rem;
+    }
+
+    /* Sidebar adjustments for tablet */
+    .sidebar {
+        width: 200px;
+    }
+}
+
+/* Large Mobile/Small Tablet (480px - 768px) */
+@media (max-width: 768px) and (min-width: 481px) {
+    .user-profile span {
+        display: inline; /* Show username on larger mobile screens */
+    }
+
+    .search-bar {
+        max-width: 250px;
+    }
+}
+
+/* Small Mobile (up to 480px) */
+@media (max-width: 480px) {
+    .main-content {
+        padding: 10px;
+    }
+
+    .main-header {
+        padding: 10px 0;
+    }
+
+    .main-header h1 {
+        font-size: 1.3rem;
+    }
+
+    .search-bar {
+        max-width: 150px;
+    }
+
+    /* Hide user name on very small screens */
+    .user-profile span {
+        display: none;
+    }
+
+    /* Sidebar adjustments for small mobile */
+    .sidebar {
+        width: 100vw;
+        max-width: 280px;
+    }
+}
+
+/* =============================================
+   RESPONSIVE CARDS AND GRIDS
+   ============================================= */
+
+/* Project Cards Grid */
+@media (max-width: 768px) {
+    /* Dashboard specific mobile optimization */
+    .dashboard-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .project-grid,
+    .summary-cards,
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+        gap: 15px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .project-card,
+    .card,
+    .summary-card {
+        padding: 15px !important;
+        margin-bottom: 15px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        border-radius: 8px !important;
+    }
+
+    /* Card headers for mobile */
+    .card-header {
+        margin-bottom: 15px !important;
+    }
+
+    .card-header h3 {
+        font-size: 1.1rem !important;
+        margin: 0 !important;
+    }
+
+    .project-card h3 {
+        font-size: 1.1rem;
+    }
+
+    .project-metrics {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .pie-chart-container {
+        margin: 15px 0;
+    }
+
+    .pie-chart {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto;
+    }
+
+    .chart-legend {
+        justify-content: center;
+        gap: 15px;
+        margin-top: 10px;
+    }
+
+    /* Mobile project metrics */
+    .project-metrics {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+        margin-top: 15px !important;
+    }
+
+    .metric {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 8px 0 !important;
+        border-bottom: 1px solid #f0f0f0 !important;
+    }
+
+    .metric:last-child {
+        border-bottom: none !important;
+    }
+
+    .metric-label {
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+    }
+
+    .metric-value {
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+        color: #2c3e50 !important;
+    }
+}
+
+/* =============================================
+   RESPONSIVE TABLES
+   ============================================= */
+
+@media (max-width: 768px) {
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .data-table {
+        min-width: 600px; /* Ensure table doesn't get too cramped */
+        font-size: 0.9rem;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 8px 6px;
+        white-space: nowrap;
+    }
+
+    /* Stack table headers and data on very small screens */
+    @media (max-width: 480px) {
+        .data-table {
+            min-width: 500px;
+            font-size: 0.8rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 6px 4px;
+        }
+    }
+}
+
+/* =============================================
+   RESPONSIVE FORMS
+   ============================================= */
+
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 15px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 12px;
+        font-size: 16px; /* Prevent zoom on iOS */
+        border-radius: 6px;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .form-actions button {
+        width: 100%;
+        padding: 12px;
+        font-size: 1rem;
+    }
+}
+
+/* =============================================
+   RESPONSIVE BUTTONS AND TOUCH TARGETS
+   ============================================= */
+
+@media (max-width: 768px) {
+    /* Ensure minimum touch target size of 44px */
+    .btn,
+    button,
+    .action-buttons .btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .action-buttons .btn {
+        justify-content: center;
+        width: 100%;
+    }
+
+    /* Sidebar Navigation Touch Targets */
+    .sidebar-nav li a {
+        padding: 15px 20px;
+        min-height: 50px;
+        align-items: center;
+    }
+
+    .sidebar-nav li a .nav-icon {
+        font-size: 1.3rem;
+    }
+}
+
+/* =============================================
+   RESPONSIVE MODALS
+   ============================================= */
+
+@media (max-width: 768px) {
+    .modal-overlay {
+        padding: 20px;
+        align-items: flex-start;
+        overflow-y: auto;
+    }
+
+    .large-modal,
+    .cost-breakdown-modal {
+        width: 100%;
+        max-width: none;
+        margin: 20px 0;
+        max-height: calc(100vh - 40px);
+    }
+
+    .modal-header {
+        padding: 15px;
+        position: sticky;
+        top: 0;
+        background: #f8f9fa;
+        z-index: 10;
+    }
+
+    .modal-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .work-report-details,
+    .modal-content {
+        padding: 15px;
+        max-height: none;
+    }
+
+    .report-section {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .report-section h4 {
+        font-size: 1rem;
+    }
+}
+
+/* =============================================
+   RESPONSIVE TYPOGRAPHY
+   ============================================= */
+
+@media (max-width: 768px) {
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.3rem; }
+    h3 { font-size: 1.1rem; }
+    h4 { font-size: 1rem; }
+    h5 { font-size: 0.9rem; }
+    h6 { font-size: 0.8rem; }
+
+    .card-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .metric-label {
+        font-size: 0.8rem;
+    }
+
+    .metric-value {
+        font-size: 1rem;
+    }
+
+    .stat-value {
+        font-size: 1.2rem;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+    }
+}
+
+/* =============================================
+   RESPONSIVE UTILITIES
+   ============================================= */
+
+/* Hide elements on mobile */
+@media (max-width: 768px) {
+    .hide-mobile {
+        display: none !important;
+    }
+
+    .show-mobile {
+        display: block !important;
+    }
+}
+
+/* Hide elements on desktop */
+@media (min-width: 769px) {
+    .hide-desktop {
+        display: none !important;
+    }
+
+    .show-desktop {
+        display: block !important;
+    }
+}
+
+/* Content spacing for mobile */
+@media (max-width: 768px) {
+    .content-wrapper {
+        padding: 0;
+    }
+
+    .section-spacing {
+        margin-bottom: 20px;
+    }
+
+    .card + .card {
+        margin-top: 15px;
+    }
+}
+
+/* =============================================
+   ACCESSIBILITY IMPROVEMENTS FOR MOBILE
+   ============================================= */
+
+@media (max-width: 768px) {
+    /* Focus styles for better accessibility */
+    .sidebar-nav li a:focus,
+    .btn:focus,
+    input:focus,
+    select:focus,
+    textarea:focus {
+        outline: 2px solid #4f46e5;
+        outline-offset: 2px;
+    }
+
+    /* Enhanced Mobile Sidebar Navigation */
+    .sidebar-nav li a {
+        color: white !important;
+        font-weight: 500 !important;
+        padding: 15px 20px !important;
+        margin: 5px 0 !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+        position: relative !important;
+        z-index: 1001 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        background-color: transparent !important;
+        border: none !important;
+    }
+
+    .sidebar-nav li a:hover {
+        background-color: #34495e !important; /* Slightly lighter dark blue */
+        color: #fff !important;
+        transform: translateX(5px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .sidebar-nav li a.active {
+        background-color: #3498db !important; /* Bright blue for active state */
+        color: #fff !important;
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4) !important;
+    }
+
+    .sidebar-nav li a:active {
+        transform: scale(0.98) !important;
+        background-color: #2980b9 !important;
+    }
+
+    .sidebar-nav li a .nav-icon {
+        font-size: 1.2rem !important;
+        color: inherit !important;
+    }
+
+    /* Ensure sidebar content is clickable */
+    .sidebar {
+        pointer-events: auto !important;
+        background: #2c3e50 !important; /* Dark navy blue */
+    }
+
+    .sidebar-nav {
+        pointer-events: auto !important;
+        z-index: 1001 !important;
+        position: relative !important;
+    }
+
+    /* Mobile Sidebar Header Styling */
+    .sidebar .sidebar-header {
+        color: white !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        background: transparent !important;
+        padding: 20px !important;
+    }
+
+    .sidebar .sidebar-header h1 {
+        color: white !important;
+        font-weight: 600 !important;
+        font-size: 1.5rem !important;
+    }
+
+    .sidebar .sidebar-toggle {
+        color: white !important;
+        background: transparent !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        padding: 8px !important;
+        border-radius: 4px !important;
+    }
+
+    .sidebar .sidebar-toggle:hover {
+        background: #34495e !important; /* Slightly lighter dark blue */
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    /* Mobile Sidebar Footer */
+    .sidebar .sidebar-footer .logout-button {
+        color: white !important;
+        background: transparent !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        margin: 10px !important;
+        padding: 12px 20px !important;
+        border-radius: 8px !important;
+    }
+
+    .sidebar .sidebar-footer .logout-button:hover {
+        background: #e74c3c !important; /* Red for logout */
+        border-color: #c0392b !important;
     }
 }

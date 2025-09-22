@@ -50,7 +50,13 @@ const mockVisitors = [
 
 export default function GateOfficerDashboard({ currentUserData }) {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    // Open by default on tablet/desktop (>=768px), closed on smaller
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return false;
+  });
   const [activeSection, setActiveSection] = useState('dashboard');
   const [workers, setWorkers] = useState(mockWorkers);
   const [searchQuery, setSearchQuery] = useState('');
@@ -100,18 +106,22 @@ export default function GateOfficerDashboard({ currentUserData }) {
     fetchVisitors();
   }, []);
 
+  // Handle responsive sidebar - follows AdminDashboard pattern
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setIsSidebarOpen(false);
-      } else {
+      if (window.innerWidth >= 768) {
+        // Desktop: Keep sidebar open
         setIsSidebarOpen(true);
+      } else {
+        // Mobile: Keep sidebar closed by default
+        setIsSidebarOpen(false);
       }
     };
 
+    // Add event listener
     window.addEventListener('resize', handleResize);
-    handleResize();
 
+    // Cleanup
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
@@ -559,8 +569,8 @@ export default function GateOfficerDashboard({ currentUserData }) {
   };
 
   return (
-    <div className="admin-dashboard" style={{ display: 'flex' }}>
-      <aside className={`sidebar ${isSidebarOpen ? '' : 'collapsed'}`}>
+    <div className={`admin-dashboard ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
+      <aside className={`sidebar ${isSidebarOpen ? 'show' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <img src={logo} alt="Collyer logo" />
@@ -606,11 +616,14 @@ export default function GateOfficerDashboard({ currentUserData }) {
         </div>
       </aside>
 
-      <main className={`main-content ${isSidebarOpen ? '' : 'shifted'}`}>
+      {/* Mobile Sidebar Backdrop */}
+      <div 
+        className={`sidebar-backdrop ${isSidebarOpen ? 'show' : ''}`}
+        onClick={() => setIsSidebarOpen(false)}
+      ></div>
+
+      <main className="main-content">
         <header className="main-header">
-          <button className="mobile-menu-button" onClick={() => setIsSidebarOpen(true)}>
-            <FaBars />
-          </button>
           <h1>{activeSection.charAt(0).toUpperCase() + activeSection.slice(1).replace('-', ' ')}</h1>
           <div className="header-actions">
             <div className="user-profile">

@@ -835,6 +835,7 @@
 
 /* Responsive Design for Work Report Modal */
 @media (max-width: 768px) {
+  /* Site Agent specific modal enhancements */
   .large-modal {
     width: 95% !important;
     max-height: 95vh !important;
@@ -848,19 +849,58 @@
   .upload-area {
     flex-direction: column;
     align-items: center;
+    padding: 20px;
+    min-height: 120px;
   }
   
   .photo-grid,
   .video-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
   }
   
   .form-actions {
     flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Work Report specific mobile enhancements */
+  .work-report-section .form-group {
+    margin-bottom: 15px;
+  }
+
+  .work-report-section input,
+  .work-report-section select,
+  .work-report-section textarea {
+    font-size: 16px;
+    padding: 12px;
+    min-height: 44px;
+  }
+
+  /* Media upload mobile optimizations */
+  .upload-button {
+    min-height: 44px;
+    padding: 12px 20px;
+    font-size: 16px;
+  }
+
+  .media-item {
+    border-radius: 8px;
+    overflow: hidden;
+    min-height: 120px;
+  }
+
+  /* Ensure buttons meet touch target guidelines */
+  .btn,
+  button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
   }
 }
 
 @media (max-width: 480px) {
+  /* Small mobile specific adjustments */
   .metric-number {
     font-size: 24px;
   }
@@ -876,5 +916,34 @@
   .data-table th,
   .data-table td {
     padding: 8px 12px;
+  }
+
+  /* Work report mobile optimizations */
+  .upload-area {
+    padding: 15px;
+    min-height: 100px;
+  }
+
+  .photo-grid,
+  .video-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+}
+
+/* Mobile Sidebar Enhancements */
+@media (max-width: 768px) {
+  .sidebar.show {
+    display: block !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 280px !important;
+    z-index: 1000 !important;
+    transform: translateX(0) !important;
+    transition: transform 0.3s ease-in-out !important;
+    background: #2c3e50 !important;
+    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3) !important;
+    overflow-y: auto !important;
   }
 }
